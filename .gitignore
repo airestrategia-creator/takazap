@@ -4,3 +4,4 @@ dist/
 backend/storage/
 *.log
 .deploy.env
+.ghtoken.txt
