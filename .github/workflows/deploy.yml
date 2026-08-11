@@ -1,0 +1,45 @@
+name: Deploy
+
+# Publica sozinho a cada push no main:
+#  - painel  -> Cloudflare Pages
+#  - backend -> Fly.io
+# As senhas ficam em Settings > Secrets and variables > Actions (nunca no código).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {} # permite disparar manualmente pelo site do GitHub
+
+jobs:
+  painel:
+    name: Painel (Cloudflare Pages)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci
+      - name: Compilar o painel
+        working-directory: frontend
+        run: npm run build
+      - name: Publicar no Cloudflare Pages
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler pages deploy dist --project-name=wzapflow --branch=main --commit-dirty=true
+
+  backend:
+    name: Backend (Fly.io)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Publicar no Fly.io
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only
