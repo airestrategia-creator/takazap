@@ -5,7 +5,7 @@ import { Server as SocketIOServer } from 'socket.io';
 
 import { config } from './config.js';
 import { supabase } from './db/supabase.js';
-import { requireUser, requireAgent } from './middleware/auth.js';
+import { requireUser, requireAgent, requireSuperAdmin } from './middleware/auth.js';
 import { SessionManager } from './services/whatsapp.js';
 import { CampaignWorker } from './jobs/campaignWorker.js';
 
@@ -19,6 +19,7 @@ import { prospectingRouter } from './routes/prospecting.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { subscriptionRouter } from './routes/subscription.js';
 import { membersRouter } from './routes/members.js';
+import { adminRouter } from './routes/admin.js';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -84,6 +85,10 @@ app.get('/', (req, res) =>
 // Só exige usuário autenticado: no cadastro a organização ainda não existe.
 app.use(requireUser);
 app.use('/api/onboarding', onboardingRouter);
+
+// Painel de controle global — só o super admin. Fica ANTES do requireAgent
+// porque não é escopado a uma organização (enxerga todas).
+app.use('/api/admin', requireSuperAdmin, adminRouter);
 
 // Daqui para baixo, tudo roda no contexto de uma organização.
 app.use(requireAgent);

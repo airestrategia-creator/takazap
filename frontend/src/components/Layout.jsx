@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessagesSquare, Users, Workflow, Send, Search, Smartphone,
-  KanbanSquare, CreditCard, LogOut, ChevronDown, Check, Lock, UserCog,
+  KanbanSquare, CreditCard, LogOut, ChevronDown, Check, Lock, UserCog, ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { useOrganization, useCan } from '../hooks/useOrganization.js';
+import { api } from '../api/client.js';
 
 export default function Layout({ children }) {
   const { organizations, signOut } = useAuth();
@@ -13,6 +14,15 @@ export default function Layout({ children }) {
   const can = useCan();
   const navigate = useNavigate();
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  // Descobre se o usuário logado é super admin, pra mostrar o link do painel
+  // de controle. Silencioso: erro/403 = não é.
+  useEffect(() => {
+    let alive = true;
+    api.get('/api/admin/me').then(() => alive && setIsSuperAdmin(true)).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const currentOrg = organizations?.find((o) => o.id === orgId);
 
@@ -110,6 +120,16 @@ export default function Layout({ children }) {
               </div>
             )}
           </div>
+
+          {isSuperAdmin && (
+            <NavLink
+              to="/admin"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-brand-700 hover:bg-brand-50"
+            >
+              <ShieldCheck size={17} strokeWidth={2} />
+              Painel de controle
+            </NavLink>
+          )}
 
           <button
             onClick={signOut}

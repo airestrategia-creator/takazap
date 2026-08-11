@@ -33,7 +33,7 @@ export async function requireAgent(req, res, next) {
 
     let query = supabase
       .from('agents')
-      .select('*')
+      .select('*, organizations!inner(admin_status)')
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: true });
 
@@ -43,6 +43,16 @@ export async function requireAgent(req, res, next) {
     if (error) throw error;
 
     const agent = agents?.[0];
+
+    // Organização suspensa pelo super admin → acesso cortado (o dono do
+    // produto pode barrar uma conta indevida).
+    if (agent?.organizations?.admin_status === 'suspended') {
+      return res.status(403).json({
+        error: 'Esta organização está suspensa. Fale com o suporte.',
+        code: 'ORG_SUSPENDED',
+      });
+    }
+
     if (!agent) {
       return res.status(403).json({
         error: orgId
@@ -74,6 +84,25 @@ export function requireRole(minRole) {
     }
     next();
   };
+}
+
+// Só o super admin (dono do produto) passa. Diferente de requireAgent: não é
+// por organização — é global. Usa req.user (precisa vir depois de requireUser).
+export async function requireSuperAdmin(req, res, next) {
+  try {
+    const { data, error } = await supabase
+      .from('platform_admins')
+      .select('user_id')
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      return res.status(403).json({ error: 'Acesso restrito ao administrador da plataforma', code: 'NOT_SUPER_ADMIN' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
 }
 
 export function signInternalToken(payload) {

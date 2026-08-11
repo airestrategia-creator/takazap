@@ -6,3 +6,6 @@ backend/storage/
 .deploy.env
 .ghtoken.txt
 .wrangler/
+.oracle.txt
+*.key
+.env.local
