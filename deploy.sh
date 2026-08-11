@@ -106,8 +106,10 @@ if ! npx --yes wrangler pages project list 2>/dev/null | grep -q "\b$PAGES_PROJE
   npx --yes wrangler pages project create "$PAGES_PROJECT" --production-branch=main
 fi
 
-say "Publicando no Cloudflare Pages"
-npx --yes wrangler pages deploy dist --project-name="$PAGES_PROJECT" --commit-dirty=true
+# --branch=main força PRODUÇÃO. Sem isso o wrangler usa o nome do branch git
+# (master), que cai em "Preview" e não atualiza wzapflow.pages.dev.
+say "Publicando no Cloudflare Pages (produção)"
+npx --yes wrangler pages deploy dist --project-name="$PAGES_PROJECT" --branch=main --commit-dirty=true
 
 PANEL_URL="https://$PAGES_PROJECT.pages.dev"
 
