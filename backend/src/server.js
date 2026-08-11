@@ -100,8 +100,18 @@ app.use('/api/prospecting', prospectingRouter);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: err.message || 'Erro interno' });
+  // Erros com status conhecido (ex: 404 do findOwned) devem chegar assim ao
+  // cliente. Sem isto, um acesso negado virava 500 — o que confunde o cliente
+  // e mascara tentativas de acesso indevido nos logs.
+  const status = Number.isInteger(err.status) ? err.status : 500;
+
+  // Só devolvemos a mensagem em erros esperados (4xx). Num 500 a mensagem pode
+  // conter detalhe interno (SQL, caminho de arquivo) — melhor esconder.
+  if (status >= 500) {
+    console.error(err);
+    return res.status(status).json({ error: 'Erro interno' });
+  }
+  res.status(status).json({ error: err.message || 'Requisição inválida' });
 });
 
 httpServer.listen(config.port, async () => {

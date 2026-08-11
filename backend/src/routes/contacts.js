@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
+import { findOwned, assertOwned } from '../lib/tenancy.js';
 
 export const contactsRouter = Router();
 
@@ -31,11 +32,18 @@ contactsRouter.get('/', async (req, res, next) => {
 contactsRouter.patch('/:id', async (req, res, next) => {
   try {
     const { name, funnel_stage_id, assigned_agent_id } = req.body;
+    const orgId = req.agent.organization_id;
+
+    // funnel_stage_id e assigned_agent_id vêm do cliente. Sem validar, dava
+    // para apontar o contato para uma etapa ou atendente de OUTRA organização.
+    if (funnel_stage_id) await assertOwned('funnel_stages', funnel_stage_id, orgId);
+    if (assigned_agent_id) await assertOwned('agents', assigned_agent_id, orgId);
+
     const { data, error } = await supabase
       .from('contacts')
       .update({ name, funnel_stage_id, assigned_agent_id })
       .eq('id', req.params.id)
-      .eq('organization_id', req.agent.organization_id)
+      .eq('organization_id', orgId)
       .select('*')
       .single();
     if (error) throw error;
@@ -48,7 +56,15 @@ contactsRouter.patch('/:id', async (req, res, next) => {
 contactsRouter.post('/:id/tags', async (req, res, next) => {
   try {
     const { tagId } = req.body;
-    const { error } = await supabase.from('contact_tags').upsert({ contact_id: req.params.id, tag_id: tagId });
+    const orgId = req.agent.organization_id;
+    // Sem estas duas checagens, dava para marcar o contato de outra conta, ou
+    // colar no meu contato uma tag que pertence a outra organização.
+    await findOwned('contacts', req.params.id, orgId, 'id');
+    await findOwned('tags', tagId, orgId, 'id');
+
+    const { error } = await supabase
+      .from('contact_tags')
+      .upsert({ contact_id: req.params.id, tag_id: tagId });
     if (error) throw error;
     res.status(201).json({ ok: true });
   } catch (err) {
@@ -58,6 +74,7 @@ contactsRouter.post('/:id/tags', async (req, res, next) => {
 
 contactsRouter.delete('/:id/tags/:tagId', async (req, res, next) => {
   try {
+    await findOwned('contacts', req.params.id, req.agent.organization_id, 'id');
     const { error } = await supabase
       .from('contact_tags')
       .delete()

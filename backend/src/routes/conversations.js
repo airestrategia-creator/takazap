@@ -66,6 +66,9 @@ export function conversationsRouter(sessionManager, io) {
   router.post('/:id/transfer', async (req, res, next) => {
     try {
       const { agentId } = req.body;
+      // O agentId vem do cliente: sem validar, dava para "transferir" a
+      // conversa para um atendente de outra organização.
+      if (agentId) await findOwned('agents', agentId, req.agent.organization_id, 'id');
       const { data, error } = await supabase
         .from('conversations')
         .update({ assigned_agent_id: agentId })
