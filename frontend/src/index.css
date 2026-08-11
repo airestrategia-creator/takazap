@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-white text-slate-800 antialiased;
+}
+
+/* Fundo suave usado nas telas do painel */
+.app-shell {
+  background-image: radial-gradient(60rem 40rem at 110% -10%, #f5f3ff 0%, transparent 60%);
+  @apply bg-slate-50;
+}

@@ -1,0 +1,34 @@
+version: "3.9"
+
+# WhatsZap Flow — orquestração para VPS.
+# O Supabase é externo (não roda aqui): só o backend (API + conector
+# WhatsApp) e o frontend (painel) sobem neste servidor.
+
+services:
+  backend:
+    build: ./backend
+    container_name: whatszap-backend
+    restart: unless-stopped
+    ports:
+      - "3333:3333"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - whatsapp_storage:/app/storage
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: whatszap-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  whatsapp_storage:
