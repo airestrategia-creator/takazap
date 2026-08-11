@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
+import { requireRole } from '../middleware/auth.js';
 
 export const flowsRouter = Router();
 
@@ -58,7 +59,7 @@ flowsRouter.get('/:id', async (req, res, next) => {
   }
 });
 
-flowsRouter.post('/', async (req, res, next) => {
+flowsRouter.post('/', requireRole('admin'), async (req, res, next) => {
   try {
     const fields = pickWritableFields(req.body);
     const { data, error } = await supabase
@@ -82,7 +83,7 @@ flowsRouter.post('/', async (req, res, next) => {
   }
 });
 
-flowsRouter.put('/:id', async (req, res, next) => {
+flowsRouter.put('/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('chatbot_flows')
@@ -98,7 +99,7 @@ flowsRouter.put('/:id', async (req, res, next) => {
   }
 });
 
-flowsRouter.delete('/:id', async (req, res, next) => {
+flowsRouter.delete('/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const { error } = await supabase
       .from('chatbot_flows')
@@ -113,7 +114,7 @@ flowsRouter.delete('/:id', async (req, res, next) => {
 });
 
 // Exclusão em lote, usada pela seleção múltipla da listagem.
-flowsRouter.post('/bulk-delete', async (req, res, next) => {
+flowsRouter.post('/bulk-delete', requireRole('admin'), async (req, res, next) => {
   try {
     const ids = Array.isArray(req.body.ids) ? req.body.ids : [];
     if (!ids.length) return res.status(400).json({ error: 'Nenhum fluxo selecionado' });
@@ -132,7 +133,7 @@ flowsRouter.post('/bulk-delete', async (req, res, next) => {
 
 // Exporta fluxos como JSON portável (sem ids de org/sessão, que não fazem
 // sentido em outra conta).
-flowsRouter.post('/export', async (req, res, next) => {
+flowsRouter.post('/export', requireRole('admin'), async (req, res, next) => {
   try {
     const ids = Array.isArray(req.body.ids) ? req.body.ids : [];
     let query = supabase
@@ -150,7 +151,7 @@ flowsRouter.post('/export', async (req, res, next) => {
   }
 });
 
-flowsRouter.post('/import', async (req, res, next) => {
+flowsRouter.post('/import', requireRole('admin'), async (req, res, next) => {
   try {
     const payload = req.body;
     const flows = Array.isArray(payload?.flows)

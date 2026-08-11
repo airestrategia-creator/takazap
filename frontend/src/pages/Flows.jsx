@@ -4,11 +4,12 @@ import {
   Plus, Pencil, Trash2, Search, Download, Upload, Loader2, Workflow, Zap, Layers,
 } from 'lucide-react';
 import { api } from '../api/client.js';
-import { useOrganization } from '../hooks/useOrganization.js';
+import { useOrganization, useCan } from '../hooks/useOrganization.js';
 
 export default function Flows() {
   const navigate = useNavigate();
   const { orgId } = useOrganization();
+  const can = useCan();
   const fileInput = useRef(null);
 
   const [flows, setFlows] = useState(null);
@@ -138,31 +139,35 @@ export default function Flows() {
               Gerencie suas automações de WhatsApp
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              ref={fileInput}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])}
-            />
-            <button
-              onClick={() => fileInput.current?.click()}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
-            >
-              <Upload size={15} />
-              Importar JSON
-            </button>
-            <button
-              onClick={createFlow}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-            >
-              <Plus size={15} />
-              Novo fluxo
-            </button>
-          </div>
+          {/* Atendente não cria nem edita automação — só o backend garante,
+              mas escondemos os botões para não oferecer o que dá 403. */}
+          {can.isAdmin && (
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInput}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])}
+              />
+              <button
+                onClick={() => fileInput.current?.click()}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:border-brand-300 hover:text-brand-700 disabled:opacity-60"
+              >
+                <Upload size={15} />
+                Importar JSON
+              </button>
+              <button
+                onClick={createFlow}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+              >
+                <Plus size={15} />
+                Novo fluxo
+              </button>
+            </div>
+          )}
         </header>
 
         <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">

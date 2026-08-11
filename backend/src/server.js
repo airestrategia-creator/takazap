@@ -18,6 +18,7 @@ import { agentsRouter } from './routes/agents.js';
 import { prospectingRouter } from './routes/prospecting.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { subscriptionRouter } from './routes/subscription.js';
+import { membersRouter } from './routes/members.js';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -96,6 +97,7 @@ app.use('/api/conversations', conversationsRouter(sessionManager, io));
 app.use('/api/flows', flowsRouter);
 app.use('/api/campaigns', campaignsRouter(campaignWorker));
 app.use('/api/agents', agentsRouter);
+app.use('/api/members', membersRouter);
 app.use('/api/prospecting', prospectingRouter);
 
 // eslint-disable-next-line no-unused-vars

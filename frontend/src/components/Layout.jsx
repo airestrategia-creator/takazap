@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessagesSquare, Users, Workflow, Send, Search, Smartphone,
-  KanbanSquare, CreditCard, LogOut, ChevronDown, Check, Lock,
+  KanbanSquare, CreditCard, LogOut, ChevronDown, Check, Lock, UserCog,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { useOrganization, useCan } from '../hooks/useOrganization.js';
@@ -27,6 +27,7 @@ export default function Layout({ children }) {
     { to: 'contatos', label: 'Contatos', icon: Users },
     { to: 'campanhas', label: 'Campanhas', icon: Send },
     { to: 'prospeccao', label: 'Prospecção', icon: Search },
+    ...(can.manageTeam ? [{ to: 'equipe', label: 'Equipe', icon: UserCog }] : []),
     { to: 'assinatura', label: 'Assinatura', icon: CreditCard },
   ];
 

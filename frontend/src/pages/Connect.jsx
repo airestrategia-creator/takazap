@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { connectSocket } from '../api/socket.js';
+import { useCan } from '../hooks/useOrganization.js';
 
 export default function Connect({ agent }) {
+  const can = useCan();
   const [sessions, setSessions] = useState([]);
   const [qr, setQr] = useState(null);
 
@@ -60,15 +62,20 @@ export default function Connect({ agent }) {
         Escaneie o QR code com o WhatsApp do número que vai atender (Configurações → Aparelhos conectados → Conectar um aparelho).
       </p>
 
-      {sessions.length === 0 && (
-        <button
-          onClick={createSession}
-          disabled={connecting}
-          className="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-lg px-4 py-2 text-sm"
-        >
-          {connecting ? 'Gerando QR code...' : 'Conectar número'}
-        </button>
-      )}
+      {sessions.length === 0 &&
+        (can.isAdmin ? (
+          <button
+            onClick={createSession}
+            disabled={connecting}
+            className="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-lg px-4 py-2 text-sm"
+          >
+            {connecting ? 'Gerando QR code...' : 'Conectar número'}
+          </button>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Nenhum número conectado. Peça a um administrador para conectar o WhatsApp.
+          </p>
+        ))}
 
       <div className="grid gap-4 mt-4">
         {sessions.map((s) => (
@@ -99,7 +106,7 @@ export default function Connect({ agent }) {
               </p>
             )}
 
-            {s.status === 'connected' && (
+            {s.status === 'connected' && can.isAdmin && (
               <button
                 onClick={() => disconnectSession(s.id)}
                 className="text-sm text-red-600 hover:underline"

@@ -17,6 +17,7 @@ import Campaigns from './pages/Campaigns.jsx';
 import Prospecting from './pages/Prospecting.jsx';
 import Subscription from './pages/Subscription.jsx';
 import FlowEditor from './pages/FlowEditor.jsx';
+import Team from './pages/Team.jsx';
 
 export default function App() {
   const { session, organizations, loading } = useAuth();
@@ -102,6 +103,10 @@ function OrgRoutes() {
         <Route path="contatos" element={<Contacts />} />
         <Route path="campanhas" element={<Campaigns />} />
         <Route path="prospeccao" element={<Prospecting />} />
+        <Route
+          path="equipe"
+          element={can.manageTeam ? <Team /> : <UpgradeNeeded feature="a gestão de equipe" />}
+        />
         <Route path="assinatura" element={<Subscription />} />
 
         {/* Inbox e Kanban dependem do plano */}

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import * as googlePlaces from '../services/googlePlaces.js';
+import { requireRole } from '../middleware/auth.js';
 
 export const prospectingRouter = Router();
 
@@ -50,7 +51,7 @@ prospectingRouter.get('/searches/:id/leads', async (req, res, next) => {
 // Dispara a busca no Google Meu Negócio (via Google Places) a partir do ICP.
 // `icpDescription` fica salvo como contexto/anotação; `searchQuery` é o termo
 // objetivo usado de fato na busca (ex: "clínicas odontológicas em Pinheiros, SP").
-prospectingRouter.post('/searches', async (req, res, next) => {
+prospectingRouter.post('/searches', requireRole('admin'), async (req, res, next) => {
   try {
     const { icpDescription, searchQuery, maxResults } = req.body;
 
@@ -184,7 +185,7 @@ prospectingRouter.post('/leads/:id/import', async (req, res, next) => {
 });
 
 // Importa todos os leads de uma busca que tenham telefone e ainda não foram importados
-prospectingRouter.post('/searches/:id/import-all', async (req, res, next) => {
+prospectingRouter.post('/searches/:id/import-all', requireRole('admin'), async (req, res, next) => {
   try {
     const { funnelStageId } = req.body;
     const { data: leads, error } = await supabase

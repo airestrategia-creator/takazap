@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { buildCampaignAudience } from '../jobs/campaignWorker.js';
 import { findOwned, assertOwned } from '../lib/tenancy.js';
+import { requireRole } from '../middleware/auth.js';
 
 export function campaignsRouter(campaignWorker) {
   const router = Router();
@@ -35,7 +36,7 @@ export function campaignsRouter(campaignWorker) {
     }
   });
 
-  router.post('/', async (req, res, next) => {
+  router.post('/', requireRole('admin'), async (req, res, next) => {
     try {
       // Campanha é só texto: mídia não faz parte do produto.
       const {
@@ -72,7 +73,7 @@ export function campaignsRouter(campaignWorker) {
     }
   });
 
-  router.post('/:id/start', async (req, res, next) => {
+  router.post('/:id/start', requireRole('admin'), async (req, res, next) => {
     try {
       // Sem o findOwned, qualquer usuário logado disparava a campanha de
       // qualquer cliente só chutando o id na URL.
@@ -89,7 +90,7 @@ export function campaignsRouter(campaignWorker) {
     }
   });
 
-  router.post('/:id/pause', async (req, res, next) => {
+  router.post('/:id/pause', requireRole('admin'), async (req, res, next) => {
     try {
       await findOwned('campaigns', req.params.id, req.agent.organization_id, 'id');
       await supabase
