@@ -93,8 +93,17 @@ export default function Inbox({ agent }) {
   }, [buscaContato]);
 
   async function claim(conv) {
-    await api.post(`/api/conversations/${conv.id}/claim`);
-    await loadConversations();
+    setErro('');
+    try {
+      const { data } = await api.post(`/api/conversations/${conv.id}/claim`);
+      // Sem atualizar a conversa aberta, a tela continuava mostrando "Assumir
+      // conversa" mesmo depois de assumida: o objeto em `active` guardava o
+      // estado antigo, e recarregar só a lista não o alcançava.
+      setActive((atual) => (atual?.id === conv.id ? { ...atual, ...data, contacts: atual.contacts } : atual));
+      await loadConversations();
+    } catch (err) {
+      setErro(err?.response?.data?.error || 'Não foi possível assumir a conversa.');
+    }
   }
 
   async function sendMessage(e) {

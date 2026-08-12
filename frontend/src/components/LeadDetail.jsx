@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Loader2, Check, Plus, MessageSquare, StickyNote, User, Phone } from 'lucide-react';
+import { X, Loader2, Check, Plus, MessageSquare, StickyNote, User, Phone, Trash2 } from 'lucide-react';
 import { api } from '../api/client.js';
 
 // Painel lateral do lead: dados, etiquetas, responsável e o histórico da
@@ -15,7 +15,29 @@ export default function LeadDetail({ contact, stages, tags, agents, companies = 
   const [conversa, setConversa] = useState(null);
   const [mensagens, setMensagens] = useState(null); // null = carregando
   const [nota, setNota] = useState('');
+  const [superAdmin, setSuperAdmin] = useState(false);
   const fimDaLista = useRef(null);
+
+  useEffect(() => {
+    // /api/admin/me responde 403 para quem não é super admin — o catch é o
+    // caminho normal para a maioria dos usuários, não um erro.
+    api
+      .get('/api/admin/me')
+      .then(() => setSuperAdmin(true))
+      .catch(() => setSuperAdmin(false));
+  }, []);
+
+  async function excluirContato() {
+    const nome = contact.name || contact.phone;
+    if (!window.confirm(`Excluir "${nome}"? Some junto todo o histórico de conversa dele. Não há como desfazer.`)) return;
+    try {
+      await api.delete(`/api/contacts/${contact.id}`);
+      onChanged?.();
+      onClose();
+    } catch (err) {
+      alert(err?.response?.data?.error || 'Não foi possível excluir.');
+    }
+  }
 
   const etiquetasDoContato = useMemo(
     () => (contact.contact_tags || []).map((t) => t.tag_id),
@@ -321,12 +343,24 @@ export default function LeadDetail({ contact, stages, tags, agents, companies = 
           )}
         </div>
 
-        <footer className="px-5 py-3 border-t border-slate-100 text-xs text-slate-400 flex items-center gap-1.5">
-          <User size={12} />
-          Criado em{' '}
-          {contact.created_at
-            ? new Date(contact.created_at).toLocaleDateString('pt-BR')
-            : '—'}
+        <footer className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
+          <span className="text-xs text-slate-400 flex items-center gap-1.5">
+            <User size={12} />
+            Criado em{' '}
+            {contact.created_at
+              ? new Date(contact.created_at).toLocaleDateString('pt-BR')
+              : '—'}
+          </span>
+          {/* Só o super admin vê. A rota também exige — esconder o botão sem
+              proteger o backend seria só disfarce. */}
+          {superAdmin && (
+            <button
+              onClick={excluirContato}
+              className="text-xs text-slate-400 hover:text-red-600 flex items-center gap-1"
+            >
+              <Trash2 size={12} /> Excluir contato
+            </button>
+          )}
         </footer>
       </aside>
     </>

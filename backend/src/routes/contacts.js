@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { findOwned, assertOwned } from '../lib/tenancy.js';
+import { requireSuperAdmin } from '../middleware/auth.js';
 
 export const contactsRouter = Router();
 
@@ -116,6 +117,45 @@ contactsRouter.patch('/:id', async (req, res, next) => {
       .single();
     if (error) throw error;
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Excluir contato é irreversível e leva junto conversas e histórico, então
+// fica restrito ao dono da plataforma. Atendente e admin da organização
+// editam à vontade, mas não apagam.
+contactsRouter.delete('/:id', requireSuperAdmin, async (req, res, next) => {
+  try {
+    const orgId = req.agent.organization_id;
+    await findOwned('contacts', req.params.id, orgId, 'id');
+
+    // As tabelas filhas não têm cascade: sem apagar na ordem, o banco recusa
+    // a exclusão por causa das chaves estrangeiras.
+    const { data: conversas } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('contact_id', req.params.id);
+
+    for (const conversa of conversas ?? []) {
+      await supabase.from('internal_notes').delete().eq('conversation_id', conversa.id);
+      await supabase.from('messages').delete().eq('conversation_id', conversa.id);
+    }
+    await supabase.from('conversations').delete().eq('contact_id', req.params.id);
+    await supabase.from('campaign_messages').delete().eq('contact_id', req.params.id);
+    await supabase.from('contact_tags').delete().eq('contact_id', req.params.id);
+    await supabase
+      .from('prospecting_leads')
+      .update({ imported_contact_id: null })
+      .eq('imported_contact_id', req.params.id);
+
+    const { error } = await supabase
+      .from('contacts')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('organization_id', orgId);
+    if (error) throw error;
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

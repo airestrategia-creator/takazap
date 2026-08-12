@@ -264,6 +264,93 @@ adminRouter.get('/stats', async (req, res, next) => {
   }
 });
 
+// Renomear a organização. Faltava: dava para criar, aprovar e suspender, mas
+// um nome digitado errado ficava para sempre.
+adminRouter.patch('/organizations/:id', async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Informe o nome da organização.' });
+
+    const { data, error } = await supabase
+      .from('organizations')
+      .update({ name: name.trim() })
+      .eq('id', req.params.id)
+      .select('id, name, admin_status')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Organização não encontrada' });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Exclusão definitiva: apaga a conta inteira — contatos, conversas, campanhas,
+// dispositivos, equipe. Exige o nome digitado por extenso porque não há
+// desfazer nem lixeira, e é o tipo de ação que não pode acontecer por clique
+// errado numa lista.
+adminRouter.delete('/organizations/:id', async (req, res, next) => {
+  try {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (!org) return res.status(404).json({ error: 'Organização não encontrada' });
+
+    if (req.body?.confirmName?.trim() !== org.name) {
+      return res.status(400).json({
+        error: `Para excluir, digite exatamente o nome da organização: ${org.name}`,
+      });
+    }
+
+    const orgId = org.id;
+
+    // As tabelas filhas não têm cascade, então a ordem importa: primeiro o que
+    // aponta para conversas e campanhas, depois elas próprias.
+    const { data: conversas } = await supabase
+      .from('conversations').select('id').eq('organization_id', orgId);
+    for (const c of conversas ?? []) {
+      await supabase.from('internal_notes').delete().eq('conversation_id', c.id);
+    }
+
+    const { data: campanhas } = await supabase
+      .from('campaigns').select('id').eq('organization_id', orgId);
+    for (const c of campanhas ?? []) {
+      await supabase.from('campaign_messages').delete().eq('campaign_id', c.id);
+    }
+
+    const { data: fluxos } = await supabase
+      .from('chatbot_flows').select('id').eq('organization_id', orgId);
+    for (const f of fluxos ?? []) {
+      await supabase.from('flow_node_stats').delete().eq('flow_id', f.id);
+    }
+
+    const { data: contatos } = await supabase
+      .from('contacts').select('id').eq('organization_id', orgId);
+    for (const c of contatos ?? []) {
+      await supabase.from('contact_tags').delete().eq('contact_id', c.id);
+    }
+
+    for (const tabela of [
+      'messages', 'conversations', 'campaigns', 'chatbot_flows',
+      'prospecting_leads', 'prospecting_searches', 'contacts', 'tags',
+      'funnel_stages', 'companies', 'whatsapp_sessions', 'payments',
+      'subscriptions', 'agents',
+    ]) {
+      const { error } = await supabase.from(tabela).delete().eq('organization_id', orgId);
+      if (error) throw new Error(`Falha ao limpar ${tabela}: ${error.message}`);
+    }
+
+    const { error } = await supabase.from('organizations').delete().eq('id', orgId);
+    if (error) throw error;
+
+    res.json({ ok: true, deleted: org.name });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Aprovar / suspender / reativar uma organização.
 adminRouter.post('/organizations/:id/:action', async (req, res, next) => {
   try {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Loader2, Building2, Users, MessageSquare, Send, Search, Plus, ShieldCheck,
   CheckCircle2, PauseCircle, PlayCircle, ChevronDown, ChevronRight, UserPlus, X,
+  Pencil, Trash2,
 } from 'lucide-react';
 import { api } from '../api/client.js';
 import { PLANS } from '../lib/plans.js';
@@ -162,16 +163,66 @@ export default function Admin() {
 
 function OrgRow({ org, onAct, onReload }) {
   const [open, setOpen] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState(org.name);
   const st = STATUS[org.adminStatus] || STATUS.pending;
+
+  async function salvarNome() {
+    setEditando(false);
+    if (!nome.trim() || nome === org.name) return setNome(org.name);
+    await api.patch(`/api/admin/organizations/${org.id}`, { name: nome.trim() });
+    onReload();
+  }
+
+  async function excluir() {
+    // Confirmação por digitação, não por "ok/cancelar": apagar uma conta leva
+    // junto contatos, conversas e campanhas, e não há lixeira.
+    const digitado = window.prompt(
+      `EXCLUIR "${org.name}" APAGA TUDO: contatos, conversas, campanhas, dispositivos e equipe. Não há como desfazer.\n\nDigite o nome exato da organização para confirmar:`,
+    );
+    if (digitado === null) return;
+    try {
+      await api.delete(`/api/admin/organizations/${org.id}`, { data: { confirmName: digitado } });
+      onReload();
+    } catch (err) {
+      alert(err?.response?.data?.error || 'Não foi possível excluir.');
+    }
+  }
 
   return (
     <>
       <tr className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
         <td className="px-4 py-3">
-          <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 text-left">
-            {open ? <ChevronDown size={15} className="text-slate-400" /> : <ChevronRight size={15} className="text-slate-400" />}
-            <span className="font-medium text-slate-800">{org.name}</span>
-          </button>
+          {editando ? (
+            <input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              onBlur={salvarNome}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') salvarNome();
+                if (e.key === 'Escape') {
+                  setNome(org.name);
+                  setEditando(false);
+                }
+              }}
+              autoFocus
+              className="font-medium text-slate-800 border-b border-brand-500 focus:outline-none bg-transparent"
+            />
+          ) : (
+            <div className="flex items-center gap-1.5 group">
+              <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 text-left">
+                {open ? <ChevronDown size={15} className="text-slate-400" /> : <ChevronRight size={15} className="text-slate-400" />}
+                <span className="font-medium text-slate-800">{org.name}</span>
+              </button>
+              <button
+                onClick={() => setEditando(true)}
+                title="Renomear"
+                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 transition"
+              >
+                <Pencil size={12} />
+              </button>
+            </div>
+          )}
         </td>
         <td className="px-2 py-3 text-slate-500">{org.owner?.email || '—'}</td>
         <td className="px-2 py-3 text-slate-600">{org.plan}</td>
@@ -196,6 +247,13 @@ function OrgRow({ org, onAct, onReload }) {
               <PlayCircle size={16} />
             </button>
           )}
+          <button
+            onClick={excluir}
+            title="Excluir organização"
+            className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50"
+          >
+            <Trash2 size={16} />
+          </button>
         </td>
       </tr>
       {open && (

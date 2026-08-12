@@ -16,6 +16,29 @@ import { handleIncomingMessage } from '../engine/flowEngine.js';
 const logger = pino({ level: 'warn' });
 
 /**
+ * Só telefone de pessoa vira contato.
+ *
+ * O WhatsApp usa o mesmo formato de jid para coisas muito diferentes:
+ *   5562999999999@s.whatsapp.net  -> pessoa
+ *   120363...@newsletter          -> canal seguido
+ *   ...@g.us                      -> grupo
+ *   status@broadcast              -> status
+ *
+ * Sem esta checagem, canal seguido pelo celular virava lead no CRM com um id
+ * de 18 dígitos no campo telefone, e mensagem enviada para lá não chega a
+ * ninguém.
+ */
+export function ehContatoDePessoa(jid) {
+  if (!jid) return false;
+  if (!jid.endsWith('@s.whatsapp.net')) return false;
+
+  const numero = jid.split('@')[0].split(':')[0];
+  // Telefone com país + DDD + número vai de 10 a 15 dígitos (E.164). Os ids de
+  // canal têm 18, então o teto já os elimina.
+  return /^\d{10,15}$/.test(numero);
+}
+
+/**
  * Gerencia UMA conexão de WhatsApp (uma "sessão") via QR code (WhatsApp Web).
  * Cada organização pode ter uma ou mais sessões (números conectados).
  * O estado de autenticação fica salvo em disco (multi-file auth state) para
@@ -199,7 +222,11 @@ export class WhatsAppSession {
     for (const msg of messages) {
       if (!msg.message || msg.key.fromMe) continue;
       const jid = msg.key.remoteJid;
-      if (!jid || jid.endsWith('@g.us') || jid === 'status@broadcast') continue; // ignora grupos/status
+      // Só conversa de pessoa entra no CRM. Canais (@newsletter) e listas de
+      // transmissão vinham como "contato" com um id de 18 dígitos no lugar do
+      // telefone — o Inbox enchia de canal seguido pelo celular, e responder
+      // ali não chegava a ninguém.
+      if (!jid || !ehContatoDePessoa(jid)) continue;
 
       const text = extractText(msg.message);
       // Por decisão de produto, o TakaZap trabalha só com texto: áudio,
