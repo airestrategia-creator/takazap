@@ -73,6 +73,21 @@ export default function Flows() {
     }
   }
 
+  // Excluir um fluxo direto da linha. Antes só existia o botão em massa, que
+  // exige marcar a caixa primeiro — quem queria apagar um só não encontrava.
+  async function excluirUm(fluxo) {
+    if (!window.confirm(`Excluir o fluxo "${fluxo.name}"? Essa ação não pode ser desfeita.`)) return;
+    setBusy(true);
+    try {
+      await api.delete(`/api/flows/${fluxo.id}`);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Não foi possível excluir.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function exportSelected() {
     setBusy(true);
     try {
@@ -280,13 +295,21 @@ export default function Flows() {
                       {f.is_active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <button
                       onClick={() => navigate(`/org/${orgId}/fluxos/${f.id}`)}
                       title="Editar fluxo"
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-700"
                     >
                       <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => excluirUm(f)}
+                      disabled={busy}
+                      title="Excluir fluxo"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    >
+                      <Trash2 size={15} />
                     </button>
                   </td>
                 </tr>
