@@ -142,6 +142,24 @@ export default function LeadDetail({ contact, stages, tags, agents, onClose, onC
             </label>
           </div>
 
+          <label className="block">
+            <span className="text-xs text-slate-500">Valor do negócio (R$)</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={contact.deal_value ?? ''}
+              onBlur={(e) => {
+                const novo = e.target.value === '' ? null : Number(e.target.value);
+                if (novo !== (contact.deal_value === null ? null : Number(contact.deal_value))) {
+                  salvarCampo({ deal_value: novo });
+                }
+              }}
+              placeholder="0,00"
+              className="mt-1 w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            />
+          </label>
+
           <div>
             <span className="text-xs text-slate-500">Etiquetas</span>
             <div className="flex flex-wrap gap-1.5 mt-1.5">

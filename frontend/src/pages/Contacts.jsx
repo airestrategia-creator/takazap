@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Plus, Pencil, Trash2, Check } from 'lucide-react';
 import { api } from '../api/client.js';
 import LeadDetail from '../components/LeadDetail.jsx';
+import NovoContato from '../components/NovoContato.jsx';
+
+export const dinheiro = (v) =>
+  Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function Contacts() {
   const [stages, setStages] = useState([]);
@@ -13,6 +17,7 @@ export default function Contacts() {
   const [busca, setBusca] = useState('');
   const [tagFiltro, setTagFiltro] = useState('');
   const [selecionadoId, setSelecionadoId] = useState(null);
+  const [criando, setCriando] = useState(false);
 
   useEffect(() => {
     recarregar();
@@ -35,6 +40,21 @@ export default function Contacts() {
     if (!newStageName.trim()) return;
     await api.post('/api/funnel-stages', { name: newStageName, position: stages.length });
     setNewStageName('');
+    recarregar();
+  }
+
+  async function renomearEtapa(id, nome) {
+    await api.patch(`/api/funnel-stages/${id}`, { name: nome });
+    recarregar();
+  }
+
+  async function excluirEtapa(stage) {
+    const quantos = contacts.filter((c) => c.funnel_stage_id === stage.id).length;
+    const aviso = quantos
+      ? `Excluir "${stage.name}"? Os ${quantos} contatos dessa coluna voltam para "Sem estágio" — nenhum é apagado.`
+      : `Excluir a etapa "${stage.name}"?`;
+    if (!window.confirm(aviso)) return;
+    await api.delete(`/api/funnel-stages/${stage.id}`);
     recarregar();
   }
 
@@ -66,6 +86,7 @@ export default function Contacts() {
 
   const selecionado = contacts.find((c) => c.id === selecionadoId) || null;
   const filtrando = busca.trim() || tagFiltro;
+  const totalGeral = visiveis.reduce((s, c) => s + Number(c.deal_value || 0), 0);
 
   return (
     <div className="p-6 h-full overflow-auto">
@@ -75,6 +96,7 @@ export default function Contacts() {
           <p className="text-xs text-slate-500 mt-0.5">
             {visiveis.length} {visiveis.length === 1 ? 'contato' : 'contatos'}
             {filtrando && ` de ${contacts.length}`}
+            {totalGeral > 0 && ` · ${dinheiro(totalGeral)} em negociação`}
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -110,11 +132,21 @@ export default function Contacts() {
           <input
             value={newStageName}
             onChange={(e) => setNewStageName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addStage()}
             placeholder="Novo estágio (ex: Negociação)"
             className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm"
           />
-          <button onClick={addStage} className="bg-brand-600 text-white rounded-lg px-3 py-1.5 text-sm">
+          <button
+            onClick={addStage}
+            className="border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-sm"
+          >
             Adicionar estágio
+          </button>
+          <button
+            onClick={() => setCriando(true)}
+            className="bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 py-1.5 text-sm flex items-center gap-1.5"
+          >
+            <Plus size={15} /> Novo contato
           </button>
         </div>
       </div>
@@ -135,9 +167,20 @@ export default function Contacts() {
             agents={agents}
             onDrop={moveContact}
             onOpen={setSelecionadoId}
+            onRenomear={renomearEtapa}
+            onExcluir={excluirEtapa}
           />
         ))}
       </div>
+
+      {criando && (
+        <NovoContato
+          stages={stages}
+          agents={agents}
+          onClose={() => setCriando(false)}
+          onCriado={recarregar}
+        />
+      )}
 
       {selecionado && (
         <LeadDetail
@@ -160,7 +203,18 @@ function diasParado(iso) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
 }
 
-function StageColumn({ stage, contacts, agents, onDrop, onOpen }) {
+function StageColumn({ stage, contacts, agents, onDrop, onOpen, onRenomear, onExcluir }) {
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState(stage.name);
+  const total = contacts.reduce((s, c) => s + Number(c.deal_value || 0), 0);
+  const editavel = Boolean(stage.id); // "Sem estágio" é virtual, não existe no banco
+
+  function confirmarNome() {
+    setEditando(false);
+    if (nome.trim() && nome !== stage.name) onRenomear(stage.id, nome.trim());
+    else setNome(stage.name);
+  }
+
   return (
     <div
       onDragOver={(e) => e.preventDefault()}
@@ -170,9 +224,53 @@ function StageColumn({ stage, contacts, agents, onDrop, onOpen }) {
       }}
       className="bg-white rounded-xl border border-slate-200 w-64 flex-shrink-0 flex flex-col"
     >
-      <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-700">{stage.name}</p>
-        <span className="text-xs text-slate-400">{contacts.length}</span>
+      <div className="px-3 py-2 border-b border-slate-100">
+        <div className="flex items-center justify-between gap-1 group">
+          {editando ? (
+            <input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              onBlur={confirmarNome}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmarNome();
+                if (e.key === 'Escape') {
+                  setNome(stage.name);
+                  setEditando(false);
+                }
+              }}
+              autoFocus
+              className="text-sm font-medium text-slate-700 border-b border-brand-500 focus:outline-none w-full bg-transparent"
+            />
+          ) : (
+            <>
+              <p className="text-sm font-medium text-slate-700 truncate">{stage.name}</p>
+              <div className="flex items-center gap-1 shrink-0">
+                {editavel && (
+                  <>
+                    <button
+                      onClick={() => setEditando(true)}
+                      title="Renomear"
+                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 transition"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      onClick={() => onExcluir(stage)}
+                      title="Excluir etapa"
+                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
+                <span className="text-xs text-slate-400">{contacts.length}</span>
+              </div>
+            </>
+          )}
+        </div>
+        {total > 0 && (
+          <p className="text-[11px] text-emerald-600 font-medium mt-0.5">{dinheiro(total)}</p>
+        )}
       </div>
       <div className="p-2 space-y-2 min-h-[120px]">
         {contacts.length === 0 && (
@@ -203,6 +301,11 @@ function StageColumn({ stage, contacts, agents, onDrop, onOpen }) {
                 )}
               </div>
               <p className="text-xs text-slate-500">{c.phone}</p>
+              {Number(c.deal_value) > 0 && (
+                <p className="text-xs font-medium text-emerald-600 mt-0.5">
+                  {dinheiro(c.deal_value)}
+                </p>
+              )}
 
               <div className="flex gap-1 mt-1 flex-wrap">
                 {(c.contact_tags || []).map((t) => (

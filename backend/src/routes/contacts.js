@@ -29,9 +29,59 @@ contactsRouter.get('/', async (req, res, next) => {
   }
 });
 
+// Cadastro manual de contato. Sem isto, só entra no CRM quem mandou mensagem
+// primeiro — o lead que veio por indicação ou de uma lista ficava de fora.
+contactsRouter.post('/', async (req, res, next) => {
+  try {
+    const { name, phone, funnel_stage_id, assigned_agent_id, deal_value } = req.body;
+    const orgId = req.agent.organization_id;
+
+    const somenteDigitos = String(phone || '').replace(/\D/g, '');
+    if (somenteDigitos.length < 10) {
+      return res.status(400).json({ error: 'Informe um telefone com DDD.' });
+    }
+
+    if (funnel_stage_id) await assertOwned('funnel_stages', funnel_stage_id, orgId);
+    if (assigned_agent_id) await assertOwned('agents', assigned_agent_id, orgId);
+
+    // O jid é a identidade do contato no WhatsApp e é único por organização.
+    // Montamos aqui para o contato criado à mão já casar com a conversa que
+    // chegar depois, em vez de virar um registro duplicado.
+    const jid = `${somenteDigitos}@s.whatsapp.net`;
+
+    const { data: existente } = await supabase
+      .from('contacts')
+      .select('id')
+      .eq('organization_id', orgId)
+      .eq('whatsapp_jid', jid)
+      .maybeSingle();
+    if (existente) {
+      return res.status(409).json({ error: 'Já existe um contato com esse telefone.' });
+    }
+
+    const { data, error } = await supabase
+      .from('contacts')
+      .insert({
+        organization_id: orgId,
+        whatsapp_jid: jid,
+        phone: somenteDigitos,
+        name: name?.trim() || null,
+        funnel_stage_id: funnel_stage_id || null,
+        assigned_agent_id: assigned_agent_id || null,
+        deal_value: deal_value ?? null,
+      })
+      .select('*')
+      .single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 contactsRouter.patch('/:id', async (req, res, next) => {
   try {
-    const { name, funnel_stage_id, assigned_agent_id } = req.body;
+    const { name, funnel_stage_id, assigned_agent_id, deal_value, lost_reason } = req.body;
     const orgId = req.agent.organization_id;
 
     // funnel_stage_id e assigned_agent_id vêm do cliente. Sem validar, dava
@@ -39,9 +89,18 @@ contactsRouter.patch('/:id', async (req, res, next) => {
     if (funnel_stage_id) await assertOwned('funnel_stages', funnel_stage_id, orgId);
     if (assigned_agent_id) await assertOwned('agents', assigned_agent_id, orgId);
 
+    // Só mexe no que veio no corpo: mandar a coluna inteira apagaria o valor
+    // do negócio toda vez que o Kanban salvasse apenas a mudança de etapa.
+    const campos = {};
+    if ('name' in req.body) campos.name = name;
+    if ('funnel_stage_id' in req.body) campos.funnel_stage_id = funnel_stage_id;
+    if ('assigned_agent_id' in req.body) campos.assigned_agent_id = assigned_agent_id;
+    if ('deal_value' in req.body) campos.deal_value = deal_value;
+    if ('lost_reason' in req.body) campos.lost_reason = lost_reason;
+
     const { data, error } = await supabase
       .from('contacts')
-      .update({ name, funnel_stage_id, assigned_agent_id })
+      .update(campos)
       .eq('id', req.params.id)
       .eq('organization_id', orgId)
       .select('*')
@@ -142,6 +201,58 @@ funnelStagesRouter.post('/', async (req, res, next) => {
       .single();
     if (error) throw error;
     res.status(201).json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Renomear, recolorir ou reordenar. Antes, uma etapa criada com nome errado
+// ficava no quadro para sempre.
+funnelStagesRouter.patch('/:id', async (req, res, next) => {
+  try {
+    const orgId = req.agent.organization_id;
+    await findOwned('funnel_stages', req.params.id, orgId, 'id');
+
+    const campos = {};
+    if ('name' in req.body) campos.name = req.body.name;
+    if ('position' in req.body) campos.position = req.body.position;
+    if ('color' in req.body) campos.color = req.body.color;
+
+    const { data, error } = await supabase
+      .from('funnel_stages')
+      .update(campos)
+      .eq('id', req.params.id)
+      .eq('organization_id', orgId)
+      .select('*')
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+funnelStagesRouter.delete('/:id', async (req, res, next) => {
+  try {
+    const orgId = req.agent.organization_id;
+    await findOwned('funnel_stages', req.params.id, orgId, 'id');
+
+    // Os contatos daquela coluna voltam para "Sem estágio" em vez de sumirem
+    // junto. Apagar a etapa não pode significar perder o lead.
+    const { error: soltarErro } = await supabase
+      .from('contacts')
+      .update({ funnel_stage_id: null })
+      .eq('funnel_stage_id', req.params.id)
+      .eq('organization_id', orgId);
+    if (soltarErro) throw soltarErro;
+
+    const { error } = await supabase
+      .from('funnel_stages')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('organization_id', orgId);
+    if (error) throw error;
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
