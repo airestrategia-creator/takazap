@@ -64,6 +64,18 @@ export class WhatsAppSession {
       // o que estourava a memória e o tempo na inicialização.
       syncFullHistory: false,
       markOnlineOnConnect: false,
+
+      // Pula as "init queries" (executeInitQueries): busca de privacidade,
+      // blocklist, props da conta e lista de conversas. Aumentar o timeout
+      // para 120s não resolveu — a etapa simplesmente não completa aqui, e
+      // derrubava a conexão logo depois de ela abrir.
+      //
+      // Nada disso é usado pelo produto: enviar, receber e o motor de fluxos
+      // funcionam sem esses dados. Perde-se o preenchimento automático de
+      // nome/foto vindo da agenda do celular — o contato entra pelo número,
+      // como já acontece com quem chega por campanha.
+      fireInitQueries: false,
+      shouldSyncHistoryMessage: () => false,
     });
 
     this.sock.ev.on('creds.update', saveCreds);
