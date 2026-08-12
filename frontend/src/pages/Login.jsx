@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Loader2, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 
@@ -56,7 +57,17 @@ export default function Login() {
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+          <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 space-y-1.5">
+            <p>{error}</p>
+            {/* O caminho para recuperar a senha aparece justamente quando a
+                pessoa errou o login — que é quando ela precisa dele. */}
+            <Link
+              to="/recuperar-senha"
+              className="inline-block font-medium text-red-700 underline underline-offset-2 hover:text-red-800"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
         )}
 
         <button
@@ -67,6 +78,13 @@ export default function Login() {
           {loading && <Loader2 size={16} className="animate-spin" />}
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
+
+        <Link
+          to="/recuperar-senha"
+          className="block text-center text-sm text-slate-500 hover:text-brand-600 hover:underline"
+        >
+          Esqueci minha senha
+        </Link>
       </form>
     </div>
   );

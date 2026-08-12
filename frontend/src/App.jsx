@@ -9,6 +9,7 @@ import Layout from './components/Layout.jsx';
 import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
+import RecuperarSenha from './pages/RecuperarSenha.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Inbox from './pages/Inbox.jsx';
 import Connect from './pages/Connect.jsx';
@@ -34,6 +35,10 @@ export default function App() {
       <Route path="/" element={session ? <HomeRedirect /> : <Landing />} />
       <Route path="/entrar" element={session ? <HomeRedirect /> : <Login />} />
       <Route path="/criar-conta" element={session ? <HomeRedirect /> : <Signup />} />
+      {/* Recuperação de senha fica acessível mesmo com sessão: quem chega pelo
+          link do e-mail já tem uma sessão de recuperação ativa, e mandar essa
+          pessoa para o painel deixaria a troca de senha inalcançável. */}
+      <Route path="/recuperar-senha" element={<RecuperarSenha />} />
 
       {/* Painel de controle global (super admin) */}
       <Route path="/admin" element={session ? <AdminGate /> : <Navigate to="/entrar" replace />} />
