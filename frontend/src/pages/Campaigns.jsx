@@ -5,10 +5,11 @@ export default function Campaigns() {
   const [campaigns, setCampaigns] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [tags, setTags] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
     name: '', session_id: '', message_template: '',
-    target_tag_ids: [], min_delay_seconds: 8, max_delay_seconds: 25,
+    target_tag_ids: [], company_id: '', min_delay_seconds: 8, max_delay_seconds: 25,
   });
 
   useEffect(() => {
@@ -16,21 +17,23 @@ export default function Campaigns() {
   }, []);
 
   async function load() {
-    const [c, s, t] = await Promise.all([
+    const [c, s, t, e] = await Promise.all([
       api.get('/api/campaigns'),
       api.get('/api/sessions'),
       api.get('/api/tags'),
+      api.get('/api/companies').catch(() => ({ data: [] })),
     ]);
     setCampaigns(c.data);
     setSessions(s.data);
     setTags(t.data);
+    setCompanies(e.data || []);
   }
 
   async function createCampaign(e) {
     e.preventDefault();
     await api.post('/api/campaigns', form);
     setCreating(false);
-    setForm({ name: '', session_id: '', message_template: '', target_tag_ids: [], min_delay_seconds: 8, max_delay_seconds: 25 });
+    setForm({ name: '', session_id: '', message_template: '', target_tag_ids: [], company_id: '', min_delay_seconds: 8, max_delay_seconds: 25 });
     await load();
   }
 
@@ -82,6 +85,30 @@ export default function Campaigns() {
               <option key={s.id} value={s.id}>{s.label} ({s.phone_number || 'não conectado'})</option>
             ))}
           </select>
+
+          {companies.length > 0 && (
+            <div>
+              <select
+                value={form.company_id}
+                onChange={(e) => setForm({ ...form, company_id: e.target.value })}
+                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="">Todas as empresas (base inteira)</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    Só {c.name} ({c.contacts_count} contatos)
+                  </option>
+                ))}
+              </select>
+              {/* O disparo é irreversível: quem escolhe errado aqui manda a
+                  mensagem de uma unidade para a carteira de outra. */}
+              <p className="text-xs text-slate-500 mt-1">
+                {form.company_id
+                  ? 'A campanha vai só para os contatos dessa empresa.'
+                  : 'Sem empresa selecionada, o disparo atinge a base inteira.'}
+              </p>
+            </div>
+          )}
           <textarea
             required
             placeholder="Mensagem. Use {{nome}} para o nome do contato."

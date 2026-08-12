@@ -5,7 +5,8 @@ export default function Prospecting() {
   const [configured, setConfigured] = useState(true);
   const [searches, setSearches] = useState([]);
   const [stages, setStages] = useState([]);
-  const [form, setForm] = useState({ icpDescription: '', searchQuery: '' });
+  const [companies, setCompanies] = useState([]);
+  const [form, setForm] = useState({ icpDescription: '', searchQuery: '', companyId: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [active, setActive] = useState(null);
@@ -16,14 +17,16 @@ export default function Prospecting() {
   }, []);
 
   async function load() {
-    const [statusRes, searchesRes, stagesRes] = await Promise.all([
+    const [statusRes, searchesRes, stagesRes, companiesRes] = await Promise.all([
       api.get('/api/prospecting/status'),
       api.get('/api/prospecting/searches'),
       api.get('/api/funnel-stages'),
+      api.get('/api/companies').catch(() => ({ data: [] })),
     ]);
     setConfigured(statusRes.data.configured);
     setSearches(searchesRes.data);
     setStages(stagesRes.data);
+    setCompanies(companiesRes.data || []);
   }
 
   async function runSearch(e) {
@@ -98,6 +101,31 @@ export default function Prospecting() {
               como uma pesquisa no Google Maps. Use o ICP acima como lembrete do que você está procurando.
             </p>
           </div>
+
+          {companies.length > 0 && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase">
+                Empresa que vai receber esses leads
+              </label>
+              <select
+                value={form.companyId}
+                onChange={(e) => setForm({ ...form, companyId: e.target.value })}
+                className="w-full border border-slate-300 rounded px-3 py-2 text-sm mt-1"
+              >
+                <option value="">Nenhuma (ficam sem empresa)</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Os leads importados já entram na carteira dessa empresa, prontos
+                para uma campanha segmentada.
+              </p>
+            </div>
+          )}
+
           {error && <p className="text-xs text-red-600">{error}</p>}
           <button
             disabled={loading}

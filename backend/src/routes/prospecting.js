@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import * as googlePlaces from '../services/googlePlaces.js';
 import { requireRole } from '../middleware/auth.js';
+import { assertOwned } from '../lib/tenancy.js';
 
 export const prospectingRouter = Router();
 
@@ -67,6 +68,13 @@ prospectingRouter.post('/searches', requireRole('admin'), async (req, res, next)
       });
     }
 
+    // A busca nasce vinculada a uma empresa para que os leads importados já
+    // entrem na carteira certa — sem isso, prospecção de uma unidade cairia no
+    // bolo comum e depois seria disparada para o público de outra.
+    if (req.body.companyId) {
+      await assertOwned('companies', req.body.companyId, req.agent.organization_id);
+    }
+
     const { data: search, error: insertError } = await supabase
       .from('prospecting_searches')
       .insert({
@@ -74,6 +82,7 @@ prospectingRouter.post('/searches', requireRole('admin'), async (req, res, next)
         created_by_agent_id: req.agent.id,
         icp_description: icpDescription || searchQuery,
         search_query: searchQuery,
+        company_id: req.body.companyId || null,
         status: 'running',
       })
       .select('*')
@@ -143,6 +152,14 @@ prospectingRouter.post('/leads/:id/import', async (req, res, next) => {
 
     const jid = `${lead.phone}@s.whatsapp.net`;
 
+    // O lead herda a empresa da busca que o originou, para já nascer na
+    // carteira certa em vez de cair no bolo comum.
+    const { data: buscaOrigem } = await supabase
+      .from('prospecting_searches')
+      .select('company_id')
+      .eq('id', lead.search_id)
+      .maybeSingle();
+
     const { data: contact, error: contactError } = await supabase
       .from('contacts')
       .upsert(
@@ -152,6 +169,7 @@ prospectingRouter.post('/leads/:id/import', async (req, res, next) => {
           phone: lead.phone,
           name: lead.name,
           funnel_stage_id: funnelStageId || null,
+          company_id: buscaOrigem?.company_id || null,
         },
         { onConflict: 'organization_id,whatsapp_jid' }
       )
@@ -197,6 +215,15 @@ prospectingRouter.post('/searches/:id/import-all', requireRole('admin'), async (
       .not('phone', 'is', null);
     if (error) throw error;
 
+    // Todos os leads desta busca herdam a mesma empresa — uma consulta só,
+    // fora do laço.
+    const { data: buscaOrigem } = await supabase
+      .from('prospecting_searches')
+      .select('company_id')
+      .eq('id', req.params.id)
+      .eq('organization_id', req.agent.organization_id)
+      .maybeSingle();
+
     let { data: tag } = await supabase
       .from('tags')
       .select('*')
@@ -224,6 +251,7 @@ prospectingRouter.post('/searches/:id/import-all', requireRole('admin'), async (
             phone: lead.phone,
             name: lead.name,
             funnel_stage_id: funnelStageId || null,
+            company_id: buscaOrigem?.company_id || null,
           },
           { onConflict: 'organization_id,whatsapp_jid' }
         )

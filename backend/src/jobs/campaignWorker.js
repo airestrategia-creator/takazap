@@ -105,6 +105,13 @@ function sleep(ms) {
 export async function buildCampaignAudience(campaign) {
   let query = supabase.from('contacts').select('id').eq('organization_id', campaign.organization_id);
 
+  // A empresa é o filtro mais forte: quando a campanha é de uma unidade de
+  // negócio, ela não pode alcançar a carteira das outras. Vem antes dos demais
+  // porque é limite de escopo, não refinamento de público.
+  if (campaign.company_id) {
+    query = query.eq('company_id', campaign.company_id);
+  }
+
   if (campaign.target_funnel_stage_ids?.length) {
     query = query.in('funnel_stage_id', campaign.target_funnel_stage_ids);
   }

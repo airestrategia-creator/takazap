@@ -41,13 +41,14 @@ export function campaignsRouter(campaignWorker) {
       // Campanha é só texto: mídia não faz parte do produto.
       const {
         name, session_id, message_template,
-        target_tag_ids, target_funnel_stage_ids,
+        target_tag_ids, target_funnel_stage_ids, company_id,
         min_delay_seconds, max_delay_seconds,
       } = req.body;
 
       // O session_id vem do cliente. Sem validar, dava para disparar campanha
       // pelo número de WhatsApp de OUTRA organização.
       await assertOwned('whatsapp_sessions', session_id, req.agent.organization_id);
+      if (company_id) await assertOwned('companies', company_id, req.agent.organization_id);
 
       const { data: campaign, error } = await supabase
         .from('campaigns')
@@ -58,6 +59,7 @@ export function campaignsRouter(campaignWorker) {
           message_template,
           target_tag_ids: target_tag_ids || [],
           target_funnel_stage_ids: target_funnel_stage_ids || [],
+          company_id: company_id || null,
           min_delay_seconds: min_delay_seconds || 8,
           max_delay_seconds: max_delay_seconds || 25,
           status: 'draft',
