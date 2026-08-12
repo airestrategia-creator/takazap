@@ -1,13 +1,28 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import * as googlePlaces from '../services/googlePlaces.js';
+import * as openStreetMap from '../services/openStreetMap.js';
 import { requireRole } from '../middleware/auth.js';
 import { assertOwned } from '../lib/tenancy.js';
+
+/**
+ * Quem faz a busca.
+ *
+ * O OSM é o padrão porque funciona sem chave nenhuma. Se um dia houver
+ * GOOGLE_PLACES_API_KEY configurada, o Google entra no lugar — a cobertura de
+ * comércio pequeno é melhor e traz avaliação, que o OSM não tem.
+ */
+function provedor() {
+  return googlePlaces.isConfigured() ? googlePlaces : openStreetMap;
+}
 
 export const prospectingRouter = Router();
 
 prospectingRouter.get('/status', (req, res) => {
-  res.json({ configured: googlePlaces.isConfigured() });
+  res.json({
+    configured: true,
+    fonte: googlePlaces.isConfigured() ? 'google' : 'openstreetmap',
+  });
 });
 
 prospectingRouter.get('/searches', async (req, res, next) => {
@@ -62,12 +77,6 @@ prospectingRouter.post('/searches', requireRole('admin'), async (req, res, next)
       });
     }
 
-    if (!googlePlaces.isConfigured()) {
-      return res.status(503).json({
-        error: 'Busca do Google Meu Negócio não configurada. Peça para um admin configurar GOOGLE_PLACES_API_KEY no servidor.',
-      });
-    }
-
     // A busca nasce vinculada a uma empresa para que os leads importados já
     // entrem na carteira certa — sem isso, prospecção de uma unidade cairia no
     // bolo comum e depois seria disparada para o público de outra.
@@ -90,7 +99,7 @@ prospectingRouter.post('/searches', requireRole('admin'), async (req, res, next)
     if (insertError) throw insertError;
 
     try {
-      const places = await googlePlaces.searchPlaces(searchQuery, { maxResults: maxResults || 20 });
+      const places = await provedor().searchPlaces(searchQuery, { maxResults: maxResults || 20 });
 
       if (places.length) {
         const rows = places.map((p) => ({
@@ -143,7 +152,7 @@ prospectingRouter.post('/leads/:id/import', async (req, res, next) => {
     if (leadError || !lead) return res.status(404).json({ error: 'Lead não encontrado' });
 
     if (!lead.phone) {
-      return res.status(400).json({ error: 'Este estabelecimento não tem telefone público cadastrado no Google.' });
+      return res.status(400).json({ error: 'Este estabelecimento não tem telefone público cadastrado.' });
     }
 
     if (lead.imported_contact_id) {
