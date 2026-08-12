@@ -9,7 +9,7 @@ contactsRouter.get('/', async (req, res, next) => {
     const { stage, tag, search, company } = req.query;
     let query = supabase
       .from('contacts')
-      .select('*, contact_tags(tag_id, tags(*)), funnel_stages(*), companies:company_id(id, name, color)')
+      .select('*, contact_tags(tag_id, tags(*)), funnel_stages(*), companies:company_id(id, name, color, logo_url)')
       .eq('organization_id', req.agent.organization_id)
       .order('last_message_at', { ascending: false, nullsFirst: false });
 

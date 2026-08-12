@@ -51,6 +51,19 @@ export class WhatsAppSession {
       logger,
       printQRInTerminal: false,
       browser: ['TakaZap', 'Chrome', '1.0.0'],
+
+      // A conexão caía com timeout de 408 em "init queries": logo após parear,
+      // o Baileys baixa conversas e contatos, e numa VM pequena isso não cabia
+      // nos 60s padrão. Os três ajustes abaixo atacam o mesmo problema.
+      defaultQueryTimeoutMs: 120000,
+      connectTimeoutMs: 90000,
+      keepAliveIntervalMs: 25000,
+
+      // Não baixar o histórico completo. Ele não é usado — as mensagens
+      // antigas não entram no sistema de qualquer forma — e era justamente
+      // o que estourava a memória e o tempo na inicialização.
+      syncFullHistory: false,
+      markOnlineOnConnect: false,
     });
 
     this.sock.ev.on('creds.update', saveCreds);

@@ -39,6 +39,26 @@ companiesRouter.get('/', async (req, res, next) => {
   }
 });
 
+// A logo trafega como data URI no corpo do request. O Express está limitado a
+// 5MB, mas um ícone não precisa disso — cortamos aqui para uma imagem grande
+// não inchar a resposta de /companies, que é carregada em várias telas.
+const LIMITE_LOGO = 200 * 1024;
+
+function validarLogo(logo) {
+  if (logo === null || logo === undefined || logo === '') return null;
+  if (!/^data:image\/(png|jpe?g|webp|svg\+xml);base64,/.test(logo)) {
+    const erro = new Error('A logo precisa ser uma imagem PNG, JPG, WEBP ou SVG.');
+    erro.status = 400;
+    throw erro;
+  }
+  if (logo.length > LIMITE_LOGO) {
+    const erro = new Error('A logo é muito pesada. Use uma imagem de até 150 KB.');
+    erro.status = 400;
+    throw erro;
+  }
+  return logo;
+}
+
 companiesRouter.post('/', async (req, res, next) => {
   try {
     const { name, color, document, session_id } = req.body;
@@ -57,6 +77,7 @@ companiesRouter.post('/', async (req, res, next) => {
         color: color || '#6366f1',
         document: document?.trim() || null,
         session_id: session_id || null,
+        logo_url: validarLogo(req.body.logo_url),
       })
       .select('*')
       .single();
@@ -77,6 +98,7 @@ companiesRouter.patch('/:id', async (req, res, next) => {
     for (const campo of ['name', 'color', 'document', 'session_id']) {
       if (campo in req.body) campos[campo] = req.body[campo] || null;
     }
+    if ('logo_url' in req.body) campos.logo_url = validarLogo(req.body.logo_url);
 
     const { data, error } = await supabase
       .from('companies')

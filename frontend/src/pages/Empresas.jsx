@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Building2, Plus, Trash2, Loader2, Smartphone } from 'lucide-react';
+import { Building2, Plus, Trash2, Loader2, Smartphone, Pencil } from 'lucide-react';
 import { api } from '../api/client.js';
+import EditarEmpresa from '../components/EditarEmpresa.jsx';
 
 const CORES = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
 
@@ -13,6 +14,7 @@ export default function Empresas() {
   const [form, setForm] = useState({ name: '', document: '', color: CORES[0], session_id: '' });
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [editando, setEditando] = useState(null);
 
   useEffect(() => {
     carregar();
@@ -158,25 +160,22 @@ export default function Empresas() {
           {empresas.map((e) => (
             <div
               key={e.id}
-              className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4"
+              onClick={() => setEditando(e)}
+              className="bg-white border border-slate-200 hover:border-brand-400 hover:shadow-sm cursor-pointer transition rounded-xl p-4 flex items-center gap-4 group"
             >
               <span
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0"
-                style={{ backgroundColor: e.color }}
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0 overflow-hidden"
+                style={{ backgroundColor: e.logo_url ? '#fff' : e.color }}
               >
-                <Building2 size={17} />
+                {e.logo_url ? (
+                  <img src={e.logo_url} alt="" className="w-full h-full object-contain" />
+                ) : (
+                  <Building2 size={17} />
+                )}
               </span>
 
               <div className="flex-1 min-w-0">
-                <input
-                  defaultValue={e.name}
-                  onBlur={(ev) =>
-                    ev.target.value.trim() &&
-                    ev.target.value !== e.name &&
-                    atualizar(e.id, { name: ev.target.value.trim() })
-                  }
-                  className="font-medium text-slate-800 text-sm w-full border-0 border-b border-transparent hover:border-slate-200 focus:border-brand-500 focus:outline-none px-0"
-                />
+                <p className="font-medium text-slate-800 text-sm truncate">{e.name}</p>
                 <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500 flex-wrap">
                   <span>
                     {e.contacts_count} {e.contacts_count === 1 ? 'contato' : 'contatos'}
@@ -196,21 +195,17 @@ export default function Empresas() {
                 </div>
               </div>
 
-              <select
-                value={e.session_id || ''}
-                onChange={(ev) => atualizar(e.id, { session_id: ev.target.value || null })}
-                className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs shrink-0"
-              >
-                <option value="">Qualquer número</option>
-                {sessoes.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+              {/* O clique no card já abre a edição; estes botões são atalhos e
+                  precisam parar a propagação para não abrir o modal junto. */}
+              <span className="text-slate-400 group-hover:text-brand-600 transition shrink-0">
+                <Pencil size={15} />
+              </span>
 
               <button
-                onClick={() => excluir(e)}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  excluir(e);
+                }}
                 title="Excluir empresa"
                 className="text-slate-400 hover:text-red-600 shrink-0"
               >
@@ -219,6 +214,15 @@ export default function Empresas() {
             </div>
           ))}
         </div>
+      )}
+
+      {editando && (
+        <EditarEmpresa
+          empresa={editando}
+          sessoes={sessoes}
+          onClose={() => setEditando(null)}
+          onSalvo={carregar}
+        />
       )}
     </div>
   );

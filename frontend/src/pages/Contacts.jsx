@@ -324,12 +324,19 @@ function StageColumn({ stage, contacts, agents, onDrop, onOpen, onRenomear, onEx
               <p className="text-xs text-slate-500">{c.phone}</p>
               {(c.companies || c.company_name) && (
                 <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                  {c.companies && (
-                    <span
-                      className="w-1.5 h-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: c.companies.color }}
-                    />
-                  )}
+                  {c.companies &&
+                    (c.companies.logo_url ? (
+                      <img
+                        src={c.companies.logo_url}
+                        alt=""
+                        className="w-3.5 h-3.5 rounded object-contain shrink-0"
+                      />
+                    ) : (
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: c.companies.color }}
+                      />
+                    ))}
                   {[c.companies?.name, c.company_name].filter(Boolean).join(' · ')}
                 </p>
               )}
