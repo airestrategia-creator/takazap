@@ -104,31 +104,74 @@ export class WhatsAppSession {
       // conexão que na verdade deu certo.
       const restartRequired = statusCode === DisconnectReason.restartRequired;
 
-      const status = loggedOut ? 'disconnected' : restartRequired ? 'connecting' : 'error';
+      if (loggedOut) {
+        // Desconectado pelo celular ("Sair" em Aparelhos conectados). As
+        // credenciais salvas morreram junto: mantê-las faria toda tentativa de
+        // reconectar falhar em silêncio, sem nunca mostrar um QR novo. Apagar
+        // é o que permite parear de novo.
+        await this.limparCredenciais();
+        this.tentativas = 0;
+        await this.updateSessionRow({ status: 'disconnected', qr_code: null, phone_number: null });
+        this.emit('status', { status: 'disconnected', motivo: 'loggedOut' });
+        return;
+      }
+
+      const status = restartRequired ? 'connecting' : 'error';
       await this.updateSessionRow({ status });
       this.emit('status', { status });
 
-      if (!loggedOut) {
-        // Uma reconexão de cada vez: dois sockets no mesmo diretório de
-        // credenciais brigam e quebram a descriptografia das mensagens.
-        if (this.restarting) return;
-        this.restarting = true;
+      // Uma reconexão de cada vez: dois sockets no mesmo diretório de
+      // credenciais brigam e quebram a descriptografia das mensagens.
+      if (this.restarting) return;
+      this.restarting = true;
 
-        try {
-          this.sock?.ev?.removeAllListeners?.();
-        } catch {
-          // socket já morto — seguir
-        }
-
-        setTimeout(
-          () => {
-            this.restarting = false;
-            this.start().catch((e) => logger.error(e));
-          },
-          restartRequired ? 500 : 3000,
-        );
+      try {
+        this.sock?.ev?.removeAllListeners?.();
+      } catch {
+        // socket já morto — seguir
       }
+
+      // Espera crescente até 1 min. Antes eram 3s fixos para sempre: com o
+      // WhatsApp fora do ar, isso viravam 20 tentativas por minuto, cada uma
+      // reabrindo socket na VM pequena.
+      this.tentativas = restartRequired ? 0 : (this.tentativas || 0) + 1;
+      const espera = restartRequired
+        ? 500
+        : Math.min(3000 * 2 ** (this.tentativas - 1), 60000);
+
+      setTimeout(() => {
+        this.restarting = false;
+        this.start().catch((e) => {
+          logger.error(e);
+          // Se nem subir o socket der certo, a tela precisa saber — senão fica
+          // eternamente em "conectando" sem ninguém tentando nada.
+          this.updateSessionRow({ status: 'error' }).catch(() => {});
+          this.emit('status', { status: 'error' });
+        });
+      }, espera);
     }
+  }
+
+  /** Apaga as credenciais em disco para que o próximo start gere um QR novo. */
+  async limparCredenciais() {
+    try {
+      fs.rmSync(this.authDir, { recursive: true, force: true });
+    } catch (err) {
+      logger.error({ err }, 'falha ao limpar credenciais');
+    }
+  }
+
+  /** Derruba o socket sem apagar credenciais (usado ao reconectar). */
+  async derrubar() {
+    this.restarting = true; // impede o handler de close agendar outro start
+    try {
+      this.sock?.ev?.removeAllListeners?.();
+      this.sock?.end?.(undefined);
+    } catch {
+      // já estava morto
+    }
+    this.sock = null;
+    this.restarting = false;
   }
 
   async updateSessionRow(fields) {
@@ -223,8 +266,15 @@ export class SessionManager {
     this.sessions = new Map();
   }
 
-  async startSession(sessionId, organizationId = null) {
-    if (this.sessions.has(sessionId)) return this.sessions.get(sessionId);
+  async startSession(sessionId, organizationId = null, { force = false } = {}) {
+    const existente = this.sessions.get(sessionId);
+
+    // Antes, existir no mapa bastava para o método devolver a sessão e não
+    // fazer nada. Só que o objeto continua no mapa mesmo com o socket morto —
+    // então o botão "Reconectar" não reconectava coisa alguma. Com force, a
+    // sessão antiga é derrubada e uma nova sobe no lugar.
+    if (existente && !force) return existente;
+    if (existente) await existente.derrubar();
 
     // Sem a organização, os eventos não chegam ao painel (ele escuta a sala da
     // org). Se o chamador não passou, buscamos no banco.
@@ -242,6 +292,11 @@ export class SessionManager {
     this.sessions.set(sessionId, session);
     await session.start();
     return session;
+  }
+
+  /** Reconecta do zero: derruba o socket atual e sobe outro. */
+  async reconnect(sessionId, organizationId = null) {
+    return this.startSession(sessionId, organizationId, { force: true });
   }
 
   get(sessionId) {

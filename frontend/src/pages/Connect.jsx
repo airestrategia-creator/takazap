@@ -51,8 +51,23 @@ export default function Connect({ agent }) {
   }
 
   async function disconnectSession(id) {
-    await api.delete(`/api/sessions/${id}`);
+    if (!window.confirm('Desconectar este número? Você vai precisar escanear o QR de novo para voltar a atender.')) return;
+    await api.post(`/api/sessions/${id}/logout`);
+    setQr(null);
     await loadSessions();
+  }
+
+  // Reconectar existe para o caso mais comum: a sessão caiu sozinha (queda de
+  // internet, celular desligado, servidor reiniciado) e as credenciais ainda
+  // valem. Nesse cenário volta sem QR nenhum.
+  async function reconnectSession(id) {
+    setConnecting(true);
+    try {
+      await api.post(`/api/sessions/${id}/reconnect`);
+      await loadSessions();
+    } finally {
+      setConnecting(false);
+    }
   }
 
   return (
@@ -106,13 +121,39 @@ export default function Connect({ agent }) {
               </p>
             )}
 
+            {(s.status === 'disconnected' || s.status === 'error') && can.isAdmin && (
+              <div className="py-4 text-center">
+                <p className="text-sm text-slate-600 mb-3">
+                  {s.status === 'error'
+                    ? 'A conexão caiu. O servidor tenta religar sozinho — se não voltar, reconecte aqui.'
+                    : 'Número desconectado. Reconecte para gerar um QR novo.'}
+                </p>
+                <button
+                  onClick={() => reconnectSession(s.id)}
+                  disabled={connecting}
+                  className="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-lg px-4 py-2 text-sm"
+                >
+                  {connecting ? 'Reconectando...' : 'Reconectar'}
+                </button>
+              </div>
+            )}
+
             {s.status === 'connected' && can.isAdmin && (
-              <button
-                onClick={() => disconnectSession(s.id)}
-                className="text-sm text-red-600 hover:underline"
-              >
-                Desconectar
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => reconnectSession(s.id)}
+                  disabled={connecting}
+                  className="text-sm text-slate-600 hover:underline disabled:opacity-60"
+                >
+                  Reconectar
+                </button>
+                <button
+                  onClick={() => disconnectSession(s.id)}
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  Desconectar
+                </button>
+              </div>
             )}
           </div>
         ))}
