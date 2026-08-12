@@ -25,7 +25,7 @@ export default function Login() {
           <div className="w-11 h-11 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-lg mx-auto mb-3">
             W
           </div>
-          <h1 className="text-lg font-semibold text-slate-800">WhatsZap Flow</h1>
+          <h1 className="text-lg font-semibold text-slate-800">TakaZap</h1>
           <p className="text-sm text-slate-500 mt-1">Entre com sua conta de atendente</p>
         </div>
 

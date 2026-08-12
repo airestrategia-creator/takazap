@@ -112,7 +112,7 @@ function Logo({ className = '' }) {
       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white flex items-center justify-center font-bold text-sm shadow-sm shadow-brand-200">
         W
       </div>
-      <span className="font-semibold tracking-tight">WhatsZap Flow</span>
+      <span className="font-semibold tracking-tight">TakaZap</span>
     </div>
   );
 }
@@ -512,7 +512,7 @@ function FinalCta() {
             um cliente está esperando resposta.
           </h2>
           <p className="mt-4 text-brand-100 max-w-xl mx-auto leading-relaxed">
-            Coloque seu primeiro fluxo no ar hoje e deixe o WhatsZap responder por você. Teste
+            Coloque seu primeiro fluxo no ar hoje e deixe o TakaZap responder por você. Teste
             grátis por 3 dias, sem cartão de crédito.
           </p>
           <Link
@@ -534,7 +534,7 @@ function Footer() {
       <div className="mx-auto max-w-6xl px-5 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
         <Logo className="text-slate-700" />
         <p className="text-xs text-slate-400 text-center sm:text-right">
-          WhatsZap Flow · automação de WhatsApp
+          TakaZap · automação de WhatsApp
           <br className="sm:hidden" />
           <span className="hidden sm:inline"> · </span>
           Não afiliado ao WhatsApp ou à Meta.

@@ -1,4 +1,4 @@
--- WhatsZap Flow — schema principal (Supabase / PostgreSQL)
+-- TakaZap — schema principal (Supabase / PostgreSQL)
 -- Rode este arquivo no SQL editor do Supabase (ou via `supabase db push`).
 
 create extension if not exists "pgcrypto";

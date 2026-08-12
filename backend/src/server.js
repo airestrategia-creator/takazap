@@ -70,13 +70,13 @@ io.on('connection', (socket) => {
   });
 });
 
-app.get('/health', (req, res) => res.json({ ok: true, service: 'wzapflow-backend' }));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'takazap-backend' }));
 
 // Quem abre a URL da API no navegador cai aqui. Sem isso o requireUser
 // devolveria "Token ausente", que parece erro do sistema.
 app.get('/', (req, res) =>
   res.json({
-    service: 'WZap Flow — API',
+    service: 'TakaZap — API',
     message: 'Esta é a API. O painel fica em outro endereço.',
     painel: config.frontendOrigin,
   }),
@@ -122,6 +122,6 @@ app.use((err, req, res, next) => {
 });
 
 httpServer.listen(config.port, async () => {
-  console.log(`WhatsZap backend rodando na porta ${config.port}`);
+  console.log(`TakaZap backend rodando na porta ${config.port}`);
   await sessionManager.resumeAll();
 });

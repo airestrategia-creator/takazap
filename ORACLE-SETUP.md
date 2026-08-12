@@ -1,6 +1,6 @@
 # Backend na Oracle Cloud (Always Free)
 
-Objetivo: rodar o backend do WhatsZap numa VM grátis da Oracle, sempre ligada,
+Objetivo: rodar o backend do TakaZap numa VM grátis da Oracle, sempre ligada,
 substituindo o Fly.io. Você faz a parte do site da Oracle; eu instalo e
 configuro o servidor.
 
@@ -53,14 +53,36 @@ Assim que eu tiver o IP e a chave, rodo o `oracle-provision.sh`, que:
 5. Configura o Caddy pra dar HTTPS no IP/domínio.
 
 ## PARTE 3 — Apontar o painel para o novo backend (eu faço)
-- Troco `VITE_API_URL` para o endereço da Oracle.
-- Ajusto `FRONTEND_ORIGIN` no backend (CORS).
+- `VITE_API_URL` já aponta para `https://api.takazap.com.br`.
+- Ajusto `FRONTEND_ORIGIN` no backend para `https://www.takazap.com.br` (CORS).
 - Redeploy do painel pelo GitHub Actions.
 - Removo o app do Fly pra não confundir.
 
+## Domínio (takazap.com.br, registrado no Registro.br)
+
+Divisão dos endereços:
+
+| Endereço | Aponta para | Serve |
+|---|---|---|
+| `www.takazap.com.br` | Cloudflare Pages | painel (site estático) |
+| `takazap.com.br` | redireciona para o `www` | — |
+| `api.takazap.com.br` | IP público da VM Oracle | backend (Node + Baileys) |
+
+O caminho recomendado é mover o DNS para a Cloudflare (plano grátis):
+no Registro.br, em **DNS → Alterar servidores DNS**, trocar os servidores do
+Registro.br pelos dois nameservers que a Cloudflare informa ao adicionar o
+domínio. Propaga em minutos (pode levar até algumas horas).
+
+Depois, na Cloudflare:
+- `api` → registro **A** para o IP da VM, com proxy **desligado** (nuvem cinza).
+  Precisa estar cinza: com o proxy ligado, o Caddy não consegue emitir o
+  certificado e o WebSocket do painel fica atrás de mais uma camada sem
+  necessidade.
+- `www` → o próprio Pages cria o CNAME quando o domínio é adicionado em
+  **Custom domains** do projeto.
+
 ## Observação sobre HTTPS
-O painel roda em HTTPS (Cloudflare). Por segurança do navegador, o backend
-também precisa de HTTPS. Sem um domínio, dá pra usar um subdomínio grátis
-(ex: sslip.io/nip.io apontando pro IP) que o Caddy consegue certificar — eu
-resolvo isso na Parte 2. Se você tiver um domínio (ex: api.suaempresa.com.br),
-melhor ainda: é só apontar pro IP.
+O painel roda em HTTPS. Por segurança do navegador, o backend também precisa
+de HTTPS — não dá pra chamar `http://<ip>` de uma página HTTPS. O Caddy emite
+o certificado de `api.takazap.com.br` sozinho, via Let's Encrypt, assim que o
+DNS estiver apontando para o IP da VM. Por isso o DNS vem antes do provisionamento.

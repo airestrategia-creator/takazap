@@ -1,4 +1,4 @@
--- WhatsZap Flow — camada SaaS (multi-tenant, planos, assinatura, PIX)
+-- TakaZap — camada SaaS (multi-tenant, planos, assinatura, PIX)
 -- Rode depois de 001..004.
 
 -- ============================================================

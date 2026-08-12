@@ -67,7 +67,7 @@ export default function Admin() {
             </span>
             <div>
               <p className="font-semibold text-slate-900 leading-tight">Painel de Controle</p>
-              <p className="text-xs text-slate-400">WhatsZap Flow · administração</p>
+              <p className="text-xs text-slate-400">TakaZap · administração</p>
             </div>
           </div>
           <Link to="/" className="text-sm text-slate-500 hover:text-brand-700">Voltar ao painel</Link>

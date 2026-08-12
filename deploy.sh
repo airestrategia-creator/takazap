@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sobe o WhatsZap Flow inteiro: backend no Fly.io + painel no Cloudflare Pages.
+# Sobe o TakaZap inteiro: backend no Fly.io + painel no Cloudflare Pages.
 #
 # Pré-requisitos (uma vez só):
 #   - .deploy.env preenchido com FLY_API_TOKEN e CLOUDFLARE_API_TOKEN
@@ -12,8 +12,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FLY="$HOME/.fly/bin/flyctl"
-APP="wzapflow-backend"
-PAGES_PROJECT="wzapflow"
+APP="takazap-backend"
+PAGES_PROJECT="takazap"
 REGION="gru"
 SUPABASE_URL="https://gqtjcjdirarbnegqdutt.supabase.co"
 
@@ -107,7 +107,7 @@ if ! npx --yes wrangler pages project list 2>/dev/null | grep -q "\b$PAGES_PROJE
 fi
 
 # --branch=main força PRODUÇÃO. Sem isso o wrangler usa o nome do branch git
-# (master), que cai em "Preview" e não atualiza wzapflow.pages.dev.
+# (master), que cai em "Preview" e não atualiza takazap.pages.dev.
 say "Publicando no Cloudflare Pages (produção)"
 npx --yes wrangler pages deploy dist --project-name="$PAGES_PROJECT" --branch=main --commit-dirty=true
 

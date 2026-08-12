@@ -101,7 +101,7 @@ function FlowEditorInner() {
 
   function onDrop(event) {
     event.preventDefault();
-    const kind = event.dataTransfer.getData('application/whatszap-node');
+    const kind = event.dataTransfer.getData('application/takazap-node');
     if (!kind || !NODE_TYPES[kind]) return;
     addNode(kind, screenToFlowPosition({ x: event.clientX, y: event.clientY }));
   }
@@ -311,7 +311,7 @@ function FlowEditorInner() {
                 key={kind}
                 draggable
                 onDragStart={(e) => {
-                  e.dataTransfer.setData('application/whatszap-node', kind);
+                  e.dataTransfer.setData('application/takazap-node', kind);
                   e.dataTransfer.effectAllowed = 'move';
                 }}
                 onClick={() => addNode(kind)}

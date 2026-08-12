@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provisiona o backend do WhatsZap numa VM Ubuntu da Oracle Cloud.
+# Provisiona o backend do TakaZap numa VM Ubuntu da Oracle Cloud.
 # Roda DENTRO da VM (via SSH). Deixa o backend no ar como serviço, com HTTPS.
 #
 # Uso (eu executo por SSH, passando as variáveis):
@@ -12,8 +12,8 @@
 
 set -euo pipefail
 
-APP_DIR=/opt/wzapflow
-REPO=https://github.com/airestrategia-creator/wzapflow.git
+APP_DIR=/opt/takazap
+REPO=https://github.com/airestrategia-creator/takazap.git
 
 echo "▸ Atualizando o sistema"
 sudo apt-get update -qq && sudo apt-get upgrade -y -qq
@@ -57,9 +57,9 @@ ENV
 mkdir -p "$APP_DIR/storage/whatsapp-auth"
 
 echo "▸ Criando o serviço systemd (liga no boot, reinicia se cair)"
-sudo tee /etc/systemd/system/wzapflow.service >/dev/null <<UNIT
+sudo tee /etc/systemd/system/takazap.service >/dev/null <<UNIT
 [Unit]
-Description=WhatsZap Flow backend
+Description=TakaZap backend
 After=network-online.target
 Wants=network-online.target
 
@@ -77,8 +77,8 @@ WantedBy=multi-user.target
 UNIT
 
 sudo systemctl daemon-reload
-sudo systemctl enable wzapflow
-sudo systemctl restart wzapflow
+sudo systemctl enable takazap
+sudo systemctl restart takazap
 
 echo "▸ Configurando o Caddy (HTTPS automático) em ${PUBLIC_HOST}"
 sudo tee /etc/caddy/Caddyfile >/dev/null <<CADDY

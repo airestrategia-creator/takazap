@@ -1,5 +1,5 @@
 {
-  "name": "whatszap-backend",
+  "name": "takazap-backend",
   "version": "1.0.0",
   "description": "Backend de automação de WhatsApp: API + conector Baileys + motor de chatbot + campanhas",
   "type": "module",

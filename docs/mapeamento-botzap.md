@@ -1,7 +1,7 @@
 # Mapeamento do painel Botzap (referência funcional)
 
 Levantado em 10/08/2026 acessando o painel logado da org "ITA Frotas".
-Serve como especificação do que o WhatsZap Flow precisa cobrir. **Só a
+Serve como especificação do que o TakaZap precisa cobrir. **Só a
 estrutura funcional foi copiada** — o visual do Botzap é dark/verde; o nosso é
 roxo/branco.
 
@@ -102,7 +102,7 @@ Isso derruba, em relação ao Botzap:
 - **mídia no inbox** (imagem, áudio, documento);
 - **mídia em campanha**.
 
-Na prática o WhatsZap é uma ferramenta de texto: mensagem recebida que não é
+Na prática o TakaZap é uma ferramenta de texto: mensagem recebida que não é
 texto é ignorada de propósito em `backend/src/services/whatsapp.js`. Se algum
 dia isso mudar, é uma decisão de produto — não trate como pendência técnica.
 

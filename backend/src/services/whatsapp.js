@@ -50,7 +50,7 @@ export class WhatsAppSession {
       auth: state,
       logger,
       printQRInTerminal: false,
-      browser: ['WhatsZap Flow', 'Chrome', '1.0.0'],
+      browser: ['TakaZap', 'Chrome', '1.0.0'],
     });
 
     this.sock.ev.on('creds.update', saveCreds);
@@ -134,7 +134,7 @@ export class WhatsAppSession {
       if (!jid || jid.endsWith('@g.us') || jid === 'status@broadcast') continue; // ignora grupos/status
 
       const text = extractText(msg.message);
-      // Por decisão de produto, o WhatsZap trabalha só com texto: áudio,
+      // Por decisão de produto, o TakaZap trabalha só com texto: áudio,
       // imagem e documento são ignorados de propósito, não é pendência.
       if (text === null) continue;
 

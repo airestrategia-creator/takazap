@@ -167,7 +167,7 @@ subscriptionRouter.post('/checkout', requireRole('owner'), async (req, res, next
     const charge = await provider.createPixCharge({
       organizationId: req.organizationId,
       amountCents,
-      description: `WhatsZap Flow — ${PLANS[subscription.plan_id]?.name || subscription.plan_id}`,
+      description: `TakaZap — ${PLANS[subscription.plan_id]?.name || subscription.plan_id}`,
     });
 
     const { data: payment, error } = await supabase

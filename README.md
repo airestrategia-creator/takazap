@@ -1,4 +1,4 @@
-# WhatsZap Flow
+# TakaZap
 
 Sistema próprio de automação de WhatsApp: chatbot com fluxo/funil, disparo em
 massa (campanhas) e painel multiatendente, com CRM básico (contatos, tags,
@@ -60,7 +60,7 @@ de dados de tudo.
 ## Estrutura do projeto
 
 ```
-whatszap/
+takazap/
 ├── backend/     # API + conector WhatsApp (Baileys) + motor de chatbot + campanhas
 ├── frontend/    # Painel do atendente (React + Tailwind)
 ├── sql/         # Schema do banco para rodar no Supabase
@@ -119,7 +119,7 @@ curl -L https://fly.io/install.sh | sh
 fly auth login
 
 # 3. Dentro da pasta backend/
-cd whatszap/backend
+cd takazap/backend
 fly launch --no-deploy      # confirme o nome do app (ou ajuste em fly.toml)
 fly volumes create whatsapp_storage --size 1 --region gru
 
@@ -142,18 +142,18 @@ essencial, porque se a máquina "dormir" a conexão do WhatsApp cai.
 ### 3.2 Painel no Cloudflare Pages
 
 ```bash
-cd whatszap/frontend
+cd takazap/frontend
 npm install
 npm run build   # gera a pasta dist/
 
 # Via CLI (wrangler):
-npx wrangler pages deploy dist --project-name=whatszap-flow-painel
+npx wrangler pages deploy dist --project-name=takazap-painel
 ```
 
 Antes do build, defina as variáveis de ambiente (`frontend/.env` local, ou
 nas "Environment variables" do projeto no painel do Cloudflare Pages):
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL` (a URL pública
-que o Fly.io te deu para o backend, ex: `https://whatszap-flow-backend.fly.dev`).
+que o Fly.io te deu para o backend, ex: `https://takazap-backend.fly.dev`).
 
 Depois de publicado, volte no passo 3.1 e ajuste `FRONTEND_ORIGIN` no Fly.io
 para a URL real do Cloudflare Pages (evita bloqueio de CORS).
@@ -163,10 +163,10 @@ para a URL real do Cloudflare Pages (evita bloqueio de CORS).
 Pré-requisitos na VPS: Docker e Docker Compose instalados.
 
 ```bash
-# 1. Envie a pasta whatszap/ para a VPS (scp, git clone, rsync — o que preferir)
+# 1. Envie a pasta takazap/ para a VPS (scp, git clone, rsync — o que preferir)
 
 # 2. Configure as variáveis de ambiente
-cd whatszap
+cd takazap
 cp backend/.env.example backend/.env      # preencha com os dados do Supabase
 cp .env.example .env                      # preencha (usado no build do frontend)
 #    -> defina VITE_API_URL como o domínio público do backend, ex:

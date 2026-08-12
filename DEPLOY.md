@@ -1,4 +1,4 @@
-# Subir o WhatsZap Flow
+# Subir o TakaZap
 
 Estado em 10/08/2026:
 
@@ -26,11 +26,11 @@ nunca no frontend, e o `.env` já está no `.gitignore`.
 Dois terminais:
 
 ```bash
-cd whatszap/backend && npm run dev
+cd takazap/backend && npm run dev
 ```
 
 ```bash
-cd whatszap/frontend && npm run dev
+cd takazap/frontend && npm run dev
 ```
 
 Abra <http://localhost:5173> e entre com `airestrategia@gmail.com`.
@@ -48,24 +48,24 @@ WhatsApp aberta. Não funciona em serverless.
 Depois:
 
 ```bash
-cd whatszap/backend && "$HOME/.fly/bin/flyctl" launch --no-deploy --copy-config --name wzapflow-backend --region gru
+cd takazap/backend && "$HOME/.fly/bin/flyctl" launch --no-deploy --copy-config --name takazap-backend --region gru
 ```
 
 ```bash
-cd whatszap/backend && "$HOME/.fly/bin/flyctl" volumes create whatsapp_storage --size 1 --region gru
+cd takazap/backend && "$HOME/.fly/bin/flyctl" volumes create whatsapp_storage --size 1 --region gru
 ```
 
 Os segredos (troque `<SERVICE_ROLE_KEY>` pela chave do passo 1):
 
 ```bash
-cd whatszap/backend && "$HOME/.fly/bin/flyctl" secrets set SUPABASE_URL=https://gqtjcjdirarbnegqdutt.supabase.co SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY> JWT_SECRET=<VALOR_DO_backend/.env> FRONTEND_ORIGIN=https://wzapflow.pages.dev PAYMENT_PROVIDER=manual
+cd takazap/backend && "$HOME/.fly/bin/flyctl" secrets set SUPABASE_URL=https://gqtjcjdirarbnegqdutt.supabase.co SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY> JWT_SECRET=<VALOR_DO_backend/.env> FRONTEND_ORIGIN=https://takazap.pages.dev PAYMENT_PROVIDER=manual
 ```
 
 ```bash
-cd whatszap/backend && "$HOME/.fly/bin/flyctl" deploy
+cd takazap/backend && "$HOME/.fly/bin/flyctl" deploy
 ```
 
-Anote a URL que ele devolver (algo como `https://wzapflow-backend.fly.dev`).
+Anote a URL que ele devolver (algo como `https://takazap-backend.fly.dev`).
 
 > O `fly.toml` já vem com `auto_stop_machines = false`. Não mude: se a máquina
 > dormir, a conexão do WhatsApp cai e você precisa ler o QR code de novo.
@@ -75,7 +75,7 @@ Anote a URL que ele devolver (algo como `https://wzapflow-backend.fly.dev`).
 Troque `VITE_API_URL` em `frontend/.env` pela URL do Fly.io, e então:
 
 ```bash
-cd whatszap/frontend && npm run build
+cd takazap/frontend && npm run build
 ```
 
 ```bash
@@ -83,7 +83,7 @@ npx wrangler login
 ```
 
 ```bash
-cd whatszap/frontend && npx wrangler pages deploy dist --project-name=wzapflow
+cd takazap/frontend && npx wrangler pages deploy dist --project-name=takazap
 ```
 
 ## Passo 5 — fechar o CORS
@@ -91,7 +91,7 @@ cd whatszap/frontend && npx wrangler pages deploy dist --project-name=wzapflow
 Ajuste `FRONTEND_ORIGIN` no Fly.io para a URL real que o Cloudflare devolveu:
 
 ```bash
-cd whatszap/backend && "$HOME/.fly/bin/flyctl" secrets set FRONTEND_ORIGIN=https://<sua-url>.pages.dev
+cd takazap/backend && "$HOME/.fly/bin/flyctl" secrets set FRONTEND_ORIGIN=https://<sua-url>.pages.dev
 ```
 
 ---

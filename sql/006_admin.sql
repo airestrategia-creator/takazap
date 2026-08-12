@@ -1,4 +1,4 @@
--- WhatsZap Flow — painel de controle global (super admin)
+-- TakaZap — painel de controle global (super admin)
 -- Rode depois de 001..005.
 
 -- Super admins da plataforma: enxergam TODAS as organizações. É diferente de

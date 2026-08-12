@@ -49,7 +49,7 @@ export default function Layout({ children }) {
             W
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-slate-800 text-sm leading-tight">WhatsZap Flow</p>
+            <p className="font-semibold text-slate-800 text-sm leading-tight">TakaZap</p>
             <p className="text-xs text-slate-400 truncate">{agent?.name}</p>
           </div>
         </div>
