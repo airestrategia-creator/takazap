@@ -27,6 +27,74 @@ export function conversationsRouter(sessionManager, io) {
     }
   });
 
+  // Abre (ou reaproveita) a conversa de um contato. Sem isto só era possível
+  // responder quem escreveu primeiro: contato cadastrado à mão ou importado da
+  // prospecção não tinha conversa, e portanto não existia no Inbox.
+  router.post('/open', async (req, res, next) => {
+    try {
+      const { contactId } = req.body;
+      const orgId = req.agent.organization_id;
+      const contato = await findOwned('contacts', contactId, orgId);
+
+      const { data: existente } = await supabase
+        .from('conversations')
+        .select('*, contacts(*), agents:assigned_agent_id(*)')
+        .eq('organization_id', orgId)
+        .eq('contact_id', contactId)
+        .order('last_message_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existente) return res.json(existente);
+
+      // A conversa precisa de um número por onde falar. Preferimos o da
+      // empresa do contato; sem isso, o único conectado.
+      let sessionId = null;
+      if (contato.company_id) {
+        const { data: empresa } = await supabase
+          .from('companies')
+          .select('session_id')
+          .eq('id', contato.company_id)
+          .maybeSingle();
+        sessionId = empresa?.session_id ?? null;
+      }
+      if (!sessionId) {
+        const { data: sessao } = await supabase
+          .from('whatsapp_sessions')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('status', 'connected')
+          .limit(1)
+          .maybeSingle();
+        sessionId = sessao?.id ?? null;
+      }
+      if (!sessionId) {
+        return res.status(409).json({
+          error: 'Nenhum número do WhatsApp conectado. Conecte um em Dispositivos para iniciar conversas.',
+        });
+      }
+
+      const { data: nova, error } = await supabase
+        .from('conversations')
+        .insert({
+          organization_id: orgId,
+          contact_id: contactId,
+          session_id: sessionId,
+          status: 'open',
+          // Quem abre a conversa pela tela quer falar; deixar o bot ativo faria
+          // o fluxo automático responder por cima do atendente.
+          bot_active: false,
+          assigned_agent_id: req.agent.id,
+        })
+        .select('*, contacts(*), agents:assigned_agent_id(*)')
+        .single();
+      if (error) throw error;
+
+      res.status(201).json(nova);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get('/:id/messages', async (req, res, next) => {
     try {
       // Sem esta checagem, qualquer usuário logado lia o histórico completo
@@ -131,10 +199,24 @@ export function conversationsRouter(sessionManager, io) {
         .maybeSingle();
       if (!conversation) return res.status(404).json({ error: 'Conversa não encontrada' });
 
-      const session = sessionManager.get(conversation.session_id);
-      if (!session) return res.status(409).json({ error: 'Sessão do WhatsApp desconectada' });
+      if (!text?.trim()) return res.status(400).json({ error: 'Escreva uma mensagem.' });
 
-      await session.sendText(conversation.contacts.whatsapp_jid, text);
+      const session = sessionManager.get(conversation.session_id);
+      if (!session) {
+        return res.status(409).json({
+          error: 'O número do WhatsApp não está conectado. Vá em Dispositivos e reconecte.',
+        });
+      }
+
+      // O erro do Baileys precisa chegar à tela com o motivo. Antes subia como
+      // 500 "Erro interno", e o atendente ficava sem saber se a mensagem saiu.
+      try {
+        await session.sendText(conversation.contacts.whatsapp_jid, text);
+      } catch (envioErr) {
+        return res.status(502).json({
+          error: `O WhatsApp recusou o envio: ${envioErr?.message || 'motivo desconhecido'}`,
+        });
+      }
 
       const { data: message, error } = await supabase
         .from('messages')

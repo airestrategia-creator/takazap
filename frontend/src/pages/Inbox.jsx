@@ -15,6 +15,10 @@ export default function Inbox({ agent }) {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [agents, setAgents] = useState([]);
+  const [erro, setErro] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [buscaContato, setBuscaContato] = useState('');
+  const [contatos, setContatos] = useState([]);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -48,9 +52,45 @@ export default function Inbox({ agent }) {
 
   async function openConversation(conv) {
     setActive(conv);
+    setErro('');
     const { data } = await api.get(`/api/conversations/${conv.id}/messages`);
     setMessages(data);
   }
+
+  // Iniciar conversa com quem ainda não escreveu — contato cadastrado à mão,
+  // importado da prospecção ou que só existe no CRM.
+  async function iniciarConversa(contato) {
+    setErro('');
+    try {
+      const { data } = await api.post('/api/conversations/open', { contactId: contato.id });
+      setBuscaContato('');
+      setContatos([]);
+      await loadConversations();
+      await openConversation(data);
+    } catch (err) {
+      setErro(err?.response?.data?.error || 'Não foi possível abrir a conversa.');
+    }
+  }
+
+  useEffect(() => {
+    const termo = buscaContato.trim();
+    if (termo.length < 2) return setContatos([]);
+    // Espera a digitação parar: buscar a cada tecla dispararia uma consulta
+    // por caractere numa máquina que já é apertada.
+    const t = setTimeout(async () => {
+      const { data } = await api.get('/api/contacts');
+      const alvo = termo.toLowerCase();
+      setContatos(
+        (data || [])
+          .filter(
+            (c) =>
+              (c.name || '').toLowerCase().includes(alvo) || (c.phone || '').includes(termo),
+          )
+          .slice(0, 6),
+      );
+    }, 350);
+    return () => clearTimeout(t);
+  }, [buscaContato]);
 
   async function claim(conv) {
     await api.post(`/api/conversations/${conv.id}/claim`);
@@ -59,11 +99,22 @@ export default function Inbox({ agent }) {
 
   async function sendMessage(e) {
     e.preventDefault();
-    if (!draft.trim() || !active) return;
+    if (!draft.trim() || !active || enviando) return;
     const text = draft;
-    setDraft('');
-    const { data } = await api.post(`/api/conversations/${active.id}/messages`, { text });
-    setMessages((prev) => [...prev, data]);
+    setErro('');
+    setEnviando(true);
+    try {
+      const { data } = await api.post(`/api/conversations/${active.id}/messages`, { text });
+      setMessages((prev) => [...prev, data]);
+      setDraft('');
+    } catch (err) {
+      // O rascunho só é limpo quando o envio dá certo. Apagar antes fazia o
+      // texto sumir junto com o erro invisível — a pessoa perdia a mensagem
+      // sem saber por quê.
+      setErro(err?.response?.data?.error || 'Não foi possível enviar. Tente de novo.');
+    } finally {
+      setEnviando(false);
+    }
   }
 
   async function transfer(agentId) {
@@ -87,6 +138,29 @@ export default function Inbox({ agent }) {
             </button>
           ))}
         </div>
+        <div className="p-2 border-b border-slate-100 relative">
+          <input
+            value={buscaContato}
+            onChange={(e) => setBuscaContato(e.target.value)}
+            placeholder="Iniciar conversa: nome ou telefone"
+            className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          />
+          {contatos.length > 0 && (
+            <div className="absolute left-2 right-2 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 overflow-hidden">
+              {contatos.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => iniciarConversa(c)}
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                >
+                  <p className="text-xs font-medium text-slate-800">{c.name || 'Sem nome'}</p>
+                  <p className="text-[11px] text-slate-500">{c.phone}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex-1 overflow-auto">
           {conversations.map((c) => (
             <button
@@ -94,13 +168,25 @@ export default function Inbox({ agent }) {
               onClick={() => openConversation(c)}
               className={`w-full text-left px-3 py-3 border-b border-slate-100 hover:bg-slate-50 ${active?.id === c.id ? 'bg-brand-50' : ''}`}
             >
-              <p className="text-sm font-medium text-slate-800 truncate">{c.contacts?.name || c.contacts?.phone}</p>
+              {/* Nome e telefone juntos: o telefone é o que identifica de fato
+                  no WhatsApp, e muitos contatos entram sem nome. */}
+              <p className="text-sm font-medium text-slate-800 truncate">
+                {c.contacts?.name || c.contacts?.phone || 'Sem identificação'}
+              </p>
+              {c.contacts?.name && c.contacts?.phone && (
+                <p className="text-[11px] text-slate-400">{c.contacts.phone}</p>
+              )}
               <p className="text-xs text-slate-500">
                 {c.bot_active ? '🤖 bot ativo' : c.agents ? `👤 ${c.agents.name}` : 'sem atendente'}
               </p>
             </button>
           ))}
-          {conversations.length === 0 && <p className="text-xs text-slate-400 p-4">Nenhuma conversa aqui.</p>}
+          {conversations.length === 0 && (
+            <div className="p-4 text-xs text-slate-400 space-y-1">
+              <p>Nenhuma conversa aqui.</p>
+              <p>Use a busca acima para começar uma com alguém do seu CRM.</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -109,7 +195,14 @@ export default function Inbox({ agent }) {
         {active ? (
           <>
             <div className="px-4 py-3 border-b border-slate-200 bg-white flex items-center justify-between">
-              <p className="font-medium text-slate-800">{active.contacts?.name || active.contacts?.phone}</p>
+              <div>
+                <p className="font-medium text-slate-800">
+                  {active.contacts?.name || active.contacts?.phone || 'Sem identificação'}
+                </p>
+                {active.contacts?.phone && (
+                  <p className="text-xs text-slate-500">{active.contacts.phone}</p>
+                )}
+              </div>
               {active.bot_active ? (
                 <button onClick={() => claim(active)} className="text-xs bg-brand-600 text-white rounded-full px-3 py-1">
                   Assumir conversa
@@ -134,15 +227,28 @@ export default function Inbox({ agent }) {
               ))}
               <div ref={bottomRef} />
             </div>
-            <form onSubmit={sendMessage} className="p-3 bg-white border-t border-slate-200 flex gap-2">
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Digite uma mensagem..."
-                className="flex-1 border border-slate-300 rounded-full px-4 py-2 text-sm"
-              />
-              <button className="bg-brand-600 text-white rounded-full px-4 py-2 text-sm">Enviar</button>
-            </form>
+            <div className="bg-white border-t border-slate-200">
+              {erro && (
+                <p className="mx-3 mt-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {erro}
+                </p>
+              )}
+              <form onSubmit={sendMessage} className="p-3 flex gap-2">
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Digite uma mensagem..."
+                  disabled={enviando}
+                  className="flex-1 border border-slate-300 rounded-full px-4 py-2 text-sm disabled:bg-slate-50"
+                />
+                <button
+                  disabled={enviando || !draft.trim()}
+                  className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-full px-4 py-2 text-sm"
+                >
+                  {enviando ? 'Enviando...' : 'Enviar'}
+                </button>
+              </form>
+            </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
