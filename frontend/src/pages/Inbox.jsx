@@ -132,6 +132,36 @@ export default function Inbox({ agent }) {
     await loadConversations();
   }
 
+  // Encerrar tira a conversa da fila. Sem isso o Inbox só cresce: toda
+  // conversa já atendida continuava aparecendo como se estivesse aberta.
+  async function encerrar() {
+    if (!active) return;
+    if (!window.confirm('Encerrar este atendimento? A conversa sai da fila e volta se a pessoa escrever de novo.')) return;
+    setErro('');
+    try {
+      await api.post(`/api/conversations/${active.id}/close`);
+      setActive(null);
+      setMessages([]);
+      await loadConversations();
+    } catch (err) {
+      setErro(err?.response?.data?.error || 'Não foi possível encerrar.');
+    }
+  }
+
+  // Caminho de volta para quem assumiu sem querer, ou terminou o atendimento
+  // humano e quer o robô cuidando de novo.
+  async function devolverAoBot() {
+    if (!active) return;
+    setErro('');
+    try {
+      const { data } = await api.post(`/api/conversations/${active.id}/release-to-bot`);
+      setActive((atual) => (atual?.id === active.id ? { ...atual, ...data, contacts: atual.contacts } : atual));
+      await loadConversations();
+    } catch (err) {
+      setErro(err?.response?.data?.error || 'Não foi possível devolver ao bot.');
+    }
+  }
+
   return (
     <div className="h-full grid grid-cols-[280px_1fr_260px]">
       {/* Lista de conversas / fila */}
@@ -212,13 +242,31 @@ export default function Inbox({ agent }) {
                   <p className="text-xs text-slate-500">{active.contacts.phone}</p>
                 )}
               </div>
-              {active.bot_active ? (
-                <button onClick={() => claim(active)} className="text-xs bg-brand-600 text-white rounded-full px-3 py-1">
-                  Assumir conversa
+              <div className="flex items-center gap-2">
+                {active.bot_active ? (
+                  <button onClick={() => claim(active)} className="text-xs bg-brand-600 hover:bg-brand-700 text-white rounded-full px-3 py-1">
+                    Assumir conversa
+                  </button>
+                ) : (
+                  <>
+                    <span className="text-xs text-slate-500">Atendimento humano</span>
+                    <button
+                      onClick={devolverAoBot}
+                      title="Deixar o robô responder de novo"
+                      className="text-xs border border-slate-300 hover:bg-slate-50 rounded-full px-3 py-1 text-slate-600"
+                    >
+                      Devolver ao bot
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={encerrar}
+                  title="Tirar da fila"
+                  className="text-xs border border-slate-300 hover:bg-red-50 hover:text-red-600 hover:border-red-200 rounded-full px-3 py-1 text-slate-600"
+                >
+                  Encerrar
                 </button>
-              ) : (
-                <span className="text-xs text-slate-500">Atendimento humano</span>
-              )}
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-2">
               {messages.map((m) => (

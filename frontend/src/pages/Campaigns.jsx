@@ -193,10 +193,87 @@ export default function Campaigns() {
                 style={{ width: `${c.total_contacts ? (c.sent_count / c.total_contacts) * 100 : 0}%` }}
               />
             </div>
+
+            <RelatorioCampanha campanha={c} />
           </div>
         ))}
         {campaigns.length === 0 && <p className="text-sm text-slate-400">Nenhuma campanha criada ainda.</p>}
       </div>
+    </div>
+  );
+}
+
+const ROTULO_STATUS = {
+  pending: ['Na fila', 'text-slate-500'],
+  sent: ['Enviada', 'text-emerald-600'],
+  delivered: ['Entregue', 'text-emerald-600'],
+  failed: ['Falhou', 'text-red-600'],
+  skipped: ['Pulada', 'text-amber-600'],
+};
+
+// Quem recebeu e quem falhou. O contador sozinho dizia "3 de 10 enviados" sem
+// dizer QUAIS — e é justamente a lista de falhas que exige ação.
+function RelatorioCampanha({ campanha }) {
+  const [aberto, setAberto] = useState(false);
+  const [linhas, setLinhas] = useState(null);
+
+  async function alternar() {
+    const novo = !aberto;
+    setAberto(novo);
+    if (novo && linhas === null) {
+      const { data } = await api.get(`/api/campaigns/${campanha.id}/messages`);
+      setLinhas(data || []);
+    }
+  }
+
+  const falhas = (linhas || []).filter((l) => l.status === 'failed');
+
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-2">
+      <button onClick={alternar} className="text-xs text-brand-600 hover:underline">
+        {aberto ? 'Ocultar relatório' : 'Ver quem recebeu'}
+      </button>
+
+      {aberto && (
+        <div className="mt-2">
+          {linhas === null ? (
+            <p className="text-xs text-slate-400">Carregando...</p>
+          ) : linhas.length === 0 ? (
+            <p className="text-xs text-slate-400">
+              Nenhum destinatário na fila. Confira os filtros de público da campanha.
+            </p>
+          ) : (
+            <>
+              {falhas.length > 0 && (
+                <p className="text-xs text-red-600 mb-2">
+                  {falhas.length} {falhas.length === 1 ? 'envio falhou' : 'envios falharam'} — veja o motivo abaixo.
+                </p>
+              )}
+              <div className="max-h-56 overflow-auto border border-slate-100 rounded-lg">
+                <table className="w-full text-xs">
+                  <tbody>
+                    {linhas.map((l) => {
+                      const [rotulo, cor] = ROTULO_STATUS[l.status] || [l.status, 'text-slate-500'];
+                      return (
+                        <tr key={l.id} className="border-b border-slate-50 last:border-0">
+                          <td className="px-2 py-1.5">
+                            {l.contacts?.name || l.contacts?.phone || '—'}
+                          </td>
+                          <td className="px-2 py-1.5 text-slate-400">{l.contacts?.phone}</td>
+                          <td className={`px-2 py-1.5 ${cor}`}>{rotulo}</td>
+                          <td className="px-2 py-1.5 text-slate-400 max-w-[180px] truncate" title={l.error || ''}>
+                            {l.error || ''}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

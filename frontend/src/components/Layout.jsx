@@ -16,6 +16,21 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [meuStatus, setMeuStatus] = useState(agent?.status || 'offline');
+
+  useEffect(() => {
+    if (agent?.status) setMeuStatus(agent.status);
+  }, [agent?.status]);
+
+  async function alternarStatus() {
+    const novo = meuStatus === 'online' ? 'offline' : 'online';
+    setMeuStatus(novo); // troca na hora; o servidor confirma logo atrás
+    try {
+      await api.patch('/api/agents/me/status', { status: novo });
+    } catch {
+      setMeuStatus(meuStatus);
+    }
+  }
 
   // Descobre se o usuário logado é super admin, pra mostrar o link do painel
   // de controle. Silencioso: erro/403 = não é.
@@ -132,6 +147,21 @@ export default function Layout({ children }) {
               Painel de controle
             </NavLink>
           )}
+
+          {/* O campo de status existia no banco e ninguém conseguia mudar.
+              É o que diz à equipe quem está de fato atendendo agora. */}
+          <button
+            onClick={alternarStatus}
+            title={meuStatus === 'online' ? 'Você está disponível' : 'Você está ausente'}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+          >
+            <span
+              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                meuStatus === 'online' ? 'bg-emerald-500' : 'bg-slate-300'
+              }`}
+            />
+            {meuStatus === 'online' ? 'Disponível' : 'Ausente'}
+          </button>
 
           <button
             onClick={signOut}
