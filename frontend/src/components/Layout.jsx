@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessagesSquare, Users, Workflow, Send, Search, Smartphone,
   KanbanSquare, CreditCard, LogOut, ChevronDown, Check, Lock, UserCog, ShieldCheck,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { useOrganization, useCan } from '../hooks/useOrganization.js';
@@ -35,6 +36,7 @@ export default function Layout({ children }) {
     { to: 'inbox', label: 'Inbox', icon: MessagesSquare, locked: !can.inbox },
     { to: 'kanban', label: 'Kanban', icon: KanbanSquare, locked: !can.kanban },
     { to: 'contatos', label: 'Contatos', icon: Users },
+    { to: 'empresas', label: 'Empresas', icon: Building2 },
     { to: 'campanhas', label: 'Campanhas', icon: Send },
     { to: 'prospeccao', label: 'Prospecção', icon: Search },
     ...(can.manageTeam ? [{ to: 'equipe', label: 'Equipe', icon: UserCog }] : []),

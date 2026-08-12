@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Inbox from './pages/Inbox.jsx';
 import Connect from './pages/Connect.jsx';
 import Contacts from './pages/Contacts.jsx';
+import Empresas from './pages/Empresas.jsx';
 import Flows from './pages/Flows.jsx';
 import Campaigns from './pages/Campaigns.jsx';
 import Prospecting from './pages/Prospecting.jsx';
@@ -128,6 +129,7 @@ function OrgRoutes() {
         <Route path="fluxos/:flowId" element={<FlowEditor />} />
         <Route path="dispositivos" element={<Connect agent={agent} />} />
         <Route path="contatos" element={<Contacts />} />
+        <Route path="empresas" element={<Empresas />} />
         <Route path="campanhas" element={<Campaigns />} />
         <Route path="prospeccao" element={<Prospecting />} />
         <Route

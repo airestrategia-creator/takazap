@@ -6,7 +6,7 @@ import { api } from '../api/client.js';
 // conversa. Fica ao lado do quadro em vez de virar página própria porque a
 // pessoa está no meio de uma triagem — tirar ela do Kanban a cada clique
 // quebraria o fluxo de trabalho.
-export default function LeadDetail({ contact, stages, tags, agents, onClose, onChanged }) {
+export default function LeadDetail({ contact, stages, tags, agents, companies = [], onClose, onChanged }) {
   const [aba, setAba] = useState('conversa');
   const [nome, setNome] = useState(contact.name || '');
   const [salvando, setSalvando] = useState(false);
@@ -139,6 +139,39 @@ export default function LeadDetail({ contact, stages, tags, agents, onClose, onC
                   </option>
                 ))}
               </select>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {companies.length > 0 && (
+              <label className="block">
+                <span className="text-xs text-slate-500">Sua empresa</span>
+                <select
+                  value={contact.company_id || ''}
+                  onChange={(e) => salvarCampo({ company_id: e.target.value || null })}
+                  className="mt-1 w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                >
+                  <option value="">Nenhuma</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <label className="block">
+              <span className="text-xs text-slate-500">Trabalha em</span>
+              <input
+                defaultValue={contact.company_name || ''}
+                onBlur={(e) =>
+                  e.target.value !== (contact.company_name || '') &&
+                  salvarCampo({ company_name: e.target.value })
+                }
+                placeholder="Empresa do cliente"
+                className="mt-1 w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
             </label>
           </div>
 

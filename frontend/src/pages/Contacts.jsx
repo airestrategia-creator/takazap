@@ -12,10 +12,12 @@ export default function Contacts() {
   const [contacts, setContacts] = useState([]);
   const [tags, setTags] = useState([]);
   const [agents, setAgents] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [newStageName, setNewStageName] = useState('');
 
   const [busca, setBusca] = useState('');
   const [tagFiltro, setTagFiltro] = useState('');
+  const [empresaFiltro, setEmpresaFiltro] = useState('');
   const [selecionadoId, setSelecionadoId] = useState(null);
   const [criando, setCriando] = useState(false);
 
@@ -24,16 +26,18 @@ export default function Contacts() {
   }, []);
 
   async function recarregar() {
-    const [s, c, t, a] = await Promise.all([
+    const [s, c, t, a, e] = await Promise.all([
       api.get('/api/funnel-stages'),
       api.get('/api/contacts'),
       api.get('/api/tags'),
       api.get('/api/agents'),
+      api.get('/api/companies').catch(() => ({ data: [] })),
     ]);
     setStages(s.data);
     setContacts(c.data);
     setTags(t.data);
     setAgents(a.data);
+    setCompanies(e.data || []);
   }
 
   async function addStage() {
@@ -80,12 +84,13 @@ export default function Contacts() {
         (c.phone || '').includes(termo);
       const casaTag =
         !tagFiltro || (c.contact_tags || []).some((t) => t.tag_id === tagFiltro);
-      return casaBusca && casaTag;
+      const casaEmpresa = !empresaFiltro || c.company_id === empresaFiltro;
+      return casaBusca && casaTag && casaEmpresa;
     });
-  }, [contacts, busca, tagFiltro]);
+  }, [contacts, busca, tagFiltro, empresaFiltro]);
 
   const selecionado = contacts.find((c) => c.id === selecionadoId) || null;
-  const filtrando = busca.trim() || tagFiltro;
+  const filtrando = busca.trim() || tagFiltro || empresaFiltro;
   const totalGeral = visiveis.reduce((s, c) => s + Number(c.deal_value || 0), 0);
 
   return (
@@ -117,6 +122,20 @@ export default function Contacts() {
               </button>
             )}
           </div>
+          {companies.length > 0 && (
+            <select
+              value={empresaFiltro}
+              onChange={(e) => setEmpresaFiltro(e.target.value)}
+              className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            >
+              <option value="">Todas as empresas</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={tagFiltro}
             onChange={(e) => setTagFiltro(e.target.value)}
@@ -177,6 +196,7 @@ export default function Contacts() {
         <NovoContato
           stages={stages}
           agents={agents}
+          companies={companies}
           onClose={() => setCriando(false)}
           onCriado={recarregar}
         />
@@ -188,6 +208,7 @@ export default function Contacts() {
           stages={stages}
           tags={tags}
           agents={agents}
+          companies={companies}
           onClose={() => setSelecionadoId(null)}
           onChanged={recarregar}
         />
@@ -301,6 +322,17 @@ function StageColumn({ stage, contacts, agents, onDrop, onOpen, onRenomear, onEx
                 )}
               </div>
               <p className="text-xs text-slate-500">{c.phone}</p>
+              {(c.companies || c.company_name) && (
+                <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                  {c.companies && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: c.companies.color }}
+                    />
+                  )}
+                  {[c.companies?.name, c.company_name].filter(Boolean).join(' · ')}
+                </p>
+              )}
               {Number(c.deal_value) > 0 && (
                 <p className="text-xs font-medium text-emerald-600 mt-0.5">
                   {dinheiro(c.deal_value)}

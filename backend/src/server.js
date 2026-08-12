@@ -20,6 +20,7 @@ import { onboardingRouter } from './routes/onboarding.js';
 import { subscriptionRouter } from './routes/subscription.js';
 import { membersRouter } from './routes/members.js';
 import { adminRouter } from './routes/admin.js';
+import { companiesRouter } from './routes/companies.js';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -95,6 +96,7 @@ app.use(requireAgent);
 
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/sessions', sessionsRouter(sessionManager));
+app.use('/api/companies', companiesRouter);
 app.use('/api/contacts', contactsRouter);
 app.use('/api/tags', tagsRouter);
 app.use('/api/funnel-stages', funnelStagesRouter);

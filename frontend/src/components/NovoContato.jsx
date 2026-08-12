@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { api } from '../api/client.js';
 
-export default function NovoContato({ stages, agents, onClose, onCriado }) {
+export default function NovoContato({ stages, agents, companies = [], onClose, onCriado }) {
   const [form, setForm] = useState({
     name: '',
     phone: '',
     funnel_stage_id: '',
     assigned_agent_id: '',
     deal_value: '',
+    company_id: companies.length === 1 ? companies[0].id : '',
+    company_name: '',
   });
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -28,6 +30,8 @@ export default function NovoContato({ stages, agents, onClose, onCriado }) {
         funnel_stage_id: form.funnel_stage_id || null,
         assigned_agent_id: form.assigned_agent_id || null,
         deal_value: form.deal_value ? Number(form.deal_value) : null,
+        company_id: form.company_id || null,
+        company_name: form.company_name,
       });
       onCriado();
       onClose();
@@ -108,6 +112,36 @@ export default function NovoContato({ stages, agents, onClose, onCriado }) {
               />
             </label>
           </div>
+
+          {companies.length > 0 && (
+            <label className="block">
+              <span className="text-xs text-slate-500">Sua empresa (de quem é o contato)</span>
+              <select
+                value={form.company_id}
+                onChange={(e) => set('company_id', e.target.value)}
+                className="mt-1 w-full border border-slate-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              >
+                <option value="">Nenhuma</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <label className="block">
+            {/* Diferente do campo acima: aqui é a empresa do cliente, não a sua.
+                "João da Padaria Silva" é dado do contato, texto livre. */}
+            <span className="text-xs text-slate-500">Onde essa pessoa trabalha</span>
+            <input
+              value={form.company_name}
+              onChange={(e) => set('company_name', e.target.value)}
+              placeholder="Padaria Silva"
+              className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            />
+          </label>
 
           <label className="block">
             <span className="text-xs text-slate-500">Responsável</span>

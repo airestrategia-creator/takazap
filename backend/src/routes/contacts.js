@@ -6,14 +6,15 @@ export const contactsRouter = Router();
 
 contactsRouter.get('/', async (req, res, next) => {
   try {
-    const { stage, tag, search } = req.query;
+    const { stage, tag, search, company } = req.query;
     let query = supabase
       .from('contacts')
-      .select('*, contact_tags(tag_id, tags(*)), funnel_stages(*)')
+      .select('*, contact_tags(tag_id, tags(*)), funnel_stages(*), companies:company_id(id, name, color)')
       .eq('organization_id', req.agent.organization_id)
       .order('last_message_at', { ascending: false, nullsFirst: false });
 
     if (stage) query = query.eq('funnel_stage_id', stage);
+    if (company) query = query.eq('company_id', company);
     if (search) query = query.ilike('name', `%${search}%`);
 
     const { data, error } = await query;
@@ -33,7 +34,9 @@ contactsRouter.get('/', async (req, res, next) => {
 // primeiro — o lead que veio por indicação ou de uma lista ficava de fora.
 contactsRouter.post('/', async (req, res, next) => {
   try {
-    const { name, phone, funnel_stage_id, assigned_agent_id, deal_value } = req.body;
+    const {
+      name, phone, funnel_stage_id, assigned_agent_id, deal_value, company_id, company_name,
+    } = req.body;
     const orgId = req.agent.organization_id;
 
     const somenteDigitos = String(phone || '').replace(/\D/g, '');
@@ -43,6 +46,7 @@ contactsRouter.post('/', async (req, res, next) => {
 
     if (funnel_stage_id) await assertOwned('funnel_stages', funnel_stage_id, orgId);
     if (assigned_agent_id) await assertOwned('agents', assigned_agent_id, orgId);
+    if (company_id) await assertOwned('companies', company_id, orgId);
 
     // O jid é a identidade do contato no WhatsApp e é único por organização.
     // Montamos aqui para o contato criado à mão já casar com a conversa que
@@ -69,6 +73,8 @@ contactsRouter.post('/', async (req, res, next) => {
         funnel_stage_id: funnel_stage_id || null,
         assigned_agent_id: assigned_agent_id || null,
         deal_value: deal_value ?? null,
+        company_id: company_id || null,
+        company_name: company_name?.trim() || null,
       })
       .select('*')
       .single();
@@ -88,6 +94,7 @@ contactsRouter.patch('/:id', async (req, res, next) => {
     // para apontar o contato para uma etapa ou atendente de OUTRA organização.
     if (funnel_stage_id) await assertOwned('funnel_stages', funnel_stage_id, orgId);
     if (assigned_agent_id) await assertOwned('agents', assigned_agent_id, orgId);
+    if (req.body.company_id) await assertOwned('companies', req.body.company_id, orgId);
 
     // Só mexe no que veio no corpo: mandar a coluna inteira apagaria o valor
     // do negócio toda vez que o Kanban salvasse apenas a mudança de etapa.
@@ -97,6 +104,8 @@ contactsRouter.patch('/:id', async (req, res, next) => {
     if ('assigned_agent_id' in req.body) campos.assigned_agent_id = assigned_agent_id;
     if ('deal_value' in req.body) campos.deal_value = deal_value;
     if ('lost_reason' in req.body) campos.lost_reason = lost_reason;
+    if ('company_id' in req.body) campos.company_id = req.body.company_id || null;
+    if ('company_name' in req.body) campos.company_name = req.body.company_name?.trim() || null;
 
     const { data, error } = await supabase
       .from('contacts')
